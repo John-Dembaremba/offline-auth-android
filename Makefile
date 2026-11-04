@@ -1,6 +1,6 @@
-.PHONY: all format format-check lint test build clean setup-precommit precommit
+.PHONY: all format format-check lint test android-test android-test-compile build clean setup-precommit precommit
 
-all: format-check lint test build
+all: format lint test android-test-compile build
 
 format:
 	./gradlew spotlessApply
@@ -13,6 +13,12 @@ lint:
 
 test:
 	./gradlew :offlineauth:testDebugUnitTest
+
+android-test-compile:
+	./gradlew :offlineauth:compileDebugAndroidTestKotlin
+
+android-test:
+	./gradlew :offlineauth:connectedDebugAndroidTest
 
 build:
 	./gradlew :offlineauth:assembleDebug
