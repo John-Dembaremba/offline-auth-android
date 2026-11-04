@@ -5,6 +5,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.PrivateKey
 import java.security.PublicKey
 
 /**
@@ -31,6 +32,19 @@ class KeyStoreManager(
             publicKey.encoded,
             Base64.NO_WRAP,
         )
+    }
+
+    internal fun getPrivateKey(): PrivateKey {
+        val entry =
+            keyStore.getEntry(
+                keyAlias,
+                null,
+            ) as? KeyStore.PrivateKeyEntry
+                ?: throw IllegalStateException(
+                    "Offline authentication key pair does not exist.",
+                )
+
+        return entry.privateKey
     }
 
     private fun getExistingPublicKey(): PublicKey? {
