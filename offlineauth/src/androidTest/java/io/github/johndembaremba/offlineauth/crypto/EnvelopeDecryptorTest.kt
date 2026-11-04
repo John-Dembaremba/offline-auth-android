@@ -2,6 +2,7 @@ package io.github.johndembaremba.offlineauth.crypto
 
 import android.util.Base64
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Test
@@ -58,8 +59,8 @@ class EnvelopeDecryptorTest {
         val plaintext =
             """
             {
-            "username": "test-user",
-            "verifier": "pbkdf2_sha256${'$'}1000000${'$'}salt${'$'}hash"
+              "username": "test-user",
+              "verifier": "pbkdf2_sha256${'$'}1000000${'$'}salt${'$'}hash"
             }
             """.trimIndent().toByteArray()
 
@@ -76,8 +77,10 @@ class EnvelopeDecryptorTest {
                 publicKey = publicKey,
             )
 
-        val decrypted =
-            envelopeDecryptor.decrypt(
+        val envelope =
+            EncryptedEnvelope(
+                keyAlgorithm = "RSA-OAEP-256",
+                contentAlgorithm = "A256GCM",
                 encryptedKey =
                     Base64.encodeToString(
                         encryptedKey,
@@ -93,6 +96,11 @@ class EnvelopeDecryptorTest {
                         ciphertext,
                         Base64.NO_WRAP,
                     ),
+            )
+
+        val decrypted =
+            envelopeDecryptor.decrypt(
+                envelope = envelope,
             )
 
         assertArrayEquals(

@@ -1,6 +1,7 @@
 package io.github.johndembaremba.offlineauth.crypto
 
 import android.util.Base64
+import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
 import java.security.spec.MGF1ParameterSpec
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
@@ -17,17 +18,16 @@ import javax.crypto.spec.SecretKeySpec
 class EnvelopeDecryptor(
     private val keyStoreManager: KeyStoreManager,
 ) {
-    fun decrypt(
-        encryptedKey: String,
-        nonce: String,
-        ciphertext: String,
-    ): ByteArray {
-        val aesKey = decryptAesKey(encryptedKey)
+    fun decrypt(envelope: EncryptedEnvelope): ByteArray {
+        val aesKey =
+            decryptAesKey(
+                envelope.encryptedKey,
+            )
 
         return decryptPayload(
             aesKey = aesKey,
-            nonce = nonce,
-            ciphertext = ciphertext,
+            nonce = envelope.nonce,
+            ciphertext = envelope.ciphertext,
         )
     }
 
