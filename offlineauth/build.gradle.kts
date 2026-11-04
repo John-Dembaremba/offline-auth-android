@@ -11,7 +11,7 @@ android {
         minSdk = 23
 
         consumerProguardFiles(
-            "consumer-rules.pro"
+            "consumer-rules.pro",
         )
     }
 
