@@ -137,6 +137,167 @@ class EncryptedCredentialStoreTest {
         )
     }
 
+    @Test
+    fun applySnapshot_replacesSuccessfulCredential() {
+        store.save(
+            username = "alice",
+            credential =
+                credential(
+                    credentialVersion = 1,
+                ),
+        )
+
+        store.applySnapshot(
+            successfulCredentials =
+                mapOf(
+                    "alice" to
+                        credential(
+                            credentialVersion = 2,
+                        ),
+                ),
+            snapshotUsernames =
+                setOf(
+                    "alice",
+                ),
+        )
+
+        assertEquals(
+            credential(
+                credentialVersion = 2,
+            ),
+            store.get(
+                username = "alice",
+            ),
+        )
+    }
+
+    @Test
+    fun applySnapshot_preservesFailedCredentialWhenUserIsPresent() {
+        val existingCredential =
+            credential(
+                credentialVersion = 1,
+            )
+
+        store.save(
+            username = "bob",
+            credential = existingCredential,
+        )
+
+        store.applySnapshot(
+            successfulCredentials = emptyMap(),
+            snapshotUsernames =
+                setOf(
+                    "bob",
+                ),
+        )
+
+        assertEquals(
+            existingCredential,
+            store.get(
+                username = "bob",
+            ),
+        )
+    }
+
+    @Test
+    fun applySnapshot_removesCredentialMissingFromSnapshot() {
+        store.save(
+            username = "charlie",
+            credential = credential(),
+        )
+
+        store.applySnapshot(
+            successfulCredentials = emptyMap(),
+            snapshotUsernames = emptySet(),
+        )
+
+        assertNull(
+            store.get(
+                username = "charlie",
+            ),
+        )
+    }
+
+    @Test
+    fun applySnapshot_appliesMixedSnapshotCorrectly() {
+        store.save(
+            username = "alice",
+            credential =
+                credential(
+                    credentialVersion = 1,
+                ),
+        )
+
+        store.save(
+            username = "bob",
+            credential =
+                credential(
+                    credentialVersion = 1,
+                ),
+        )
+
+        store.save(
+            username = "charlie",
+            credential =
+                credential(
+                    credentialVersion = 1,
+                ),
+        )
+
+        store.applySnapshot(
+            successfulCredentials =
+                mapOf(
+                    "alice" to
+                        credential(
+                            credentialVersion = 2,
+                        ),
+                    "david" to
+                        credential(
+                            credentialVersion = 1,
+                        ),
+                ),
+            snapshotUsernames =
+                setOf(
+                    "alice",
+                    "bob",
+                    "david",
+                ),
+        )
+
+        assertEquals(
+            credential(
+                credentialVersion = 2,
+            ),
+            store.get(
+                username = "alice",
+            ),
+        )
+
+        assertEquals(
+            credential(
+                credentialVersion = 1,
+            ),
+            store.get(
+                username = "bob",
+            ),
+        )
+
+        assertNull(
+            store.get(
+                username = "charlie",
+            ),
+        )
+
+        assertEquals(
+            credential(
+                credentialVersion = 1,
+            ),
+            store.get(
+                username = "david",
+            ),
+        )
+    }
+
     private fun credential(credentialVersion: Int = 1): OfflineCredential =
         OfflineCredential(
             passwordAlgorithm = "pbkdf2_sha256",
