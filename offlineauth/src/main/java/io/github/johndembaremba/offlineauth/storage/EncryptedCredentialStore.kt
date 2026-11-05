@@ -186,6 +186,35 @@ class EncryptedCredentialStore private constructor(
         val ciphertext: String,
     )
 
+    override fun applySnapshot(
+        successfulCredentials: Map<String, OfflineCredential>,
+        snapshotUsernames: Set<String>,
+    ) {
+        val existingUsernames =
+            preferences.all.keys
+                .filter { key ->
+                    key.startsWith(CREDENTIAL_PREFIX)
+                }.map { key ->
+                    key.removePrefix(CREDENTIAL_PREFIX)
+                }.toSet()
+
+        val usernamesToRemove =
+            existingUsernames - snapshotUsernames
+
+        usernamesToRemove.forEach { username ->
+            remove(
+                username = username,
+            )
+        }
+
+        successfulCredentials.forEach { (username, credential) ->
+            save(
+                username = username,
+                credential = credential,
+            )
+        }
+    }
+
     companion object {
         private const val PREFERENCES_NAME =
             "offline_auth_credentials"

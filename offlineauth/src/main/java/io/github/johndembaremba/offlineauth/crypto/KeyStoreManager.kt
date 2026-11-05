@@ -19,7 +19,7 @@ import java.security.PublicKey
  */
 class KeyStoreManager(
     private val keyAlias: String = DEFAULT_KEY_ALIAS,
-) {
+) : PublicKeyProvider {
     private val keyStore: KeyStore =
         KeyStore.getInstance(ANDROID_KEYSTORE).apply {
             load(null)
@@ -79,6 +79,8 @@ class KeyStoreManager(
 
         return keyPairGenerator.generateKeyPair().public
     }
+
+    override fun getPublicKey(): String = getOrCreatePublicKey()
 
     companion object {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"

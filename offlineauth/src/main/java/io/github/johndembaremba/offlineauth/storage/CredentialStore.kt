@@ -18,4 +18,9 @@ interface CredentialStore {
     fun replaceAll(credentials: Map<String, OfflineCredential>)
 
     fun clear()
+
+    fun applySnapshot(
+        successfulCredentials: Map<String, OfflineCredential>,
+        snapshotUsernames: Set<String>,
+    )
 }
