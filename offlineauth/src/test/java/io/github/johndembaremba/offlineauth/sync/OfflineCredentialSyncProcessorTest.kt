@@ -58,6 +58,11 @@ class OfflineCredentialSyncProcessorTest {
                                 username = "bob",
                             ),
                         ),
+                    snapshotUsernames =
+                        setOf(
+                            "alice",
+                            "bob",
+                        ),
                 )
 
             assertEquals(
@@ -116,6 +121,10 @@ class OfflineCredentialSyncProcessorTest {
                             username = "bob",
                         ),
                     ),
+                snapshotUsernames =
+                    setOf(
+                        "bob",
+                    ),
             )
 
             assertEquals(
@@ -154,6 +163,10 @@ class OfflineCredentialSyncProcessorTest {
                         synchronizedCredential(
                             username = "alice",
                         ),
+                    ),
+                snapshotUsernames =
+                    setOf(
+                        "alice",
                     ),
             )
 
@@ -216,8 +229,8 @@ private class FakeCredentialStore : CredentialStore {
             .filter { username ->
                 username !in snapshotUsernames
             }.toList()
-            .forEach {
-                credentials.remove(it)
+            .forEach { username ->
+                credentials.remove(username)
             }
 
         successfulCredentials.forEach { (username, credential) ->

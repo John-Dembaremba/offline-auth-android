@@ -2,7 +2,9 @@ package io.github.johndembaremba.offlineauth
 
 import io.github.johndembaremba.offlineauth.auth.OfflineAuthenticator
 import io.github.johndembaremba.offlineauth.crypto.PublicKeyProvider
+import io.github.johndembaremba.offlineauth.model.CredentialFailurePayload
 import io.github.johndembaremba.offlineauth.model.OfflineCredential
+import io.github.johndembaremba.offlineauth.model.OfflineCredentialSnapshot
 import io.github.johndembaremba.offlineauth.storage.CredentialStore
 import io.github.johndembaremba.offlineauth.sync.CredentialSyncProcessor
 import io.github.johndembaremba.offlineauth.sync.CredentialSyncResult
@@ -56,16 +58,78 @@ class OfflineAuthManagerTest {
             val manager =
                 manager(
                     syncProcessor =
-                        CredentialSyncProcessor {
+                        CredentialSyncProcessor { _, _ ->
                             expected
                         },
+                )
+
+            val snapshot =
+                OfflineCredentialSnapshot(
+                    protocolVersion = 1,
+                    credentials = emptyList(),
+                    failures = emptyList(),
                 )
 
             assertEquals(
                 expected,
                 manager.sync(
-                    credentials = emptyList(),
+                    snapshot = snapshot,
                 ),
+            )
+        }
+
+    @Test
+    fun sync_includesBackendFailureUserInAuthoritativeSnapshot() =
+        runBlocking {
+            var capturedSnapshotUsernames: Set<String> =
+                emptySet()
+
+            val manager =
+                manager(
+                    syncProcessor =
+                        CredentialSyncProcessor { _, snapshotUsernames ->
+                            capturedSnapshotUsernames =
+                                snapshotUsernames
+
+                            CredentialSyncResult(
+                                successfulUsernames = emptyList(),
+                                failures = emptyList(),
+                            )
+                        },
+                )
+
+            val snapshot =
+                OfflineCredentialSnapshot(
+                    protocolVersion = 1,
+                    credentials = emptyList(),
+                    failures =
+                        listOf(
+                            CredentialFailurePayload(
+                                userId = "1",
+                                username = "bob",
+                                reason = "unusable_password",
+                            ),
+                        ),
+                )
+
+            val result =
+                manager.sync(
+                    snapshot = snapshot,
+                )
+
+            assertEquals(
+                setOf("bob"),
+                capturedSnapshotUsernames,
+            )
+
+            assertEquals(
+                "bob",
+                result.failures.first().username,
+            )
+
+            assertEquals(
+                "unusable_password",
+                result.failures.first().reason,
             )
         }
 
@@ -77,7 +141,7 @@ class OfflineAuthManagerTest {
         credentialStore: CredentialStore =
             FakeCredentialStore(),
         syncProcessor: CredentialSyncProcessor =
-            CredentialSyncProcessor {
+            CredentialSyncProcessor { _, _ ->
                 CredentialSyncResult(
                     successfulUsernames = emptyList(),
                     failures = emptyList(),
@@ -119,9 +183,12 @@ private class FakeCredentialStore : CredentialStore {
         snapshotUsernames: Set<String>,
     ) {
         credentials.keys
-            .filter { it !in snapshotUsernames }
-            .toList()
-            .forEach(credentials::remove)
+            .filter { username ->
+                username !in snapshotUsernames
+            }.toList()
+            .forEach { username ->
+                credentials.remove(username)
+            }
 
         credentials.putAll(
             successfulCredentials,
