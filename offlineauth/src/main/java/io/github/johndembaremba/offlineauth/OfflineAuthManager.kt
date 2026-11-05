@@ -5,10 +5,12 @@ import io.github.johndembaremba.offlineauth.auth.OfflineAuthenticator
 import io.github.johndembaremba.offlineauth.crypto.EnvelopeDecryptor
 import io.github.johndembaremba.offlineauth.crypto.KeyStoreManager
 import io.github.johndembaremba.offlineauth.crypto.PublicKeyProvider
+import io.github.johndembaremba.offlineauth.model.OfflineCredentialSnapshot
 import io.github.johndembaremba.offlineauth.serialization.CredentialParser
 import io.github.johndembaremba.offlineauth.storage.CredentialStore
 import io.github.johndembaremba.offlineauth.storage.EncryptedCredentialStore
 import io.github.johndembaremba.offlineauth.sync.AdaptiveParallelismStrategy
+import io.github.johndembaremba.offlineauth.sync.CredentialSyncFailure
 import io.github.johndembaremba.offlineauth.sync.CredentialSyncProcessor
 import io.github.johndembaremba.offlineauth.sync.CredentialSyncResult
 import io.github.johndembaremba.offlineauth.sync.DefaultCredentialEnvelopeProcessor
@@ -26,10 +28,47 @@ class OfflineAuthManager internal constructor(
 ) {
     fun getPublicKey(): String = publicKeyProvider.getPublicKey()
 
-    suspend fun sync(credentials: List<SynchronizedCredential>): CredentialSyncResult =
-        syncProcessor.process(
-            credentials = credentials,
+    suspend fun sync(snapshot: OfflineCredentialSnapshot): CredentialSyncResult {
+        val synchronizedCredentials =
+            snapshot.credentials.map { credential ->
+                SynchronizedCredential(
+                    username = credential.username,
+                    envelope = credential.envelope,
+                )
+            }
+
+        val snapshotUsernames =
+            buildSet {
+                snapshot.credentials.forEach { credential ->
+                    add(credential.username)
+                }
+
+                snapshot.failures.forEach { failure ->
+                    add(failure.username)
+                }
+            }
+
+        val processingResult =
+            syncProcessor.process(
+                credentials = synchronizedCredentials,
+                snapshotUsernames = snapshotUsernames,
+            )
+
+        val backendFailures =
+            snapshot.failures.map { failure ->
+                CredentialSyncFailure(
+                    username = failure.username,
+                    reason = failure.reason,
+                )
+            }
+
+        return CredentialSyncResult(
+            successfulUsernames =
+                processingResult.successfulUsernames,
+            failures =
+                backendFailures + processingResult.failures,
         )
+    }
 
     fun authenticate(
         username: String,

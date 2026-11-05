@@ -25,12 +25,10 @@ class OfflineCredentialSyncProcessor(
     private val dispatcher: CoroutineDispatcher =
         Dispatchers.Default,
 ) : CredentialSyncProcessor {
-    override suspend fun process(credentials: List<SynchronizedCredential>): CredentialSyncResult {
-        val snapshotUsernames =
-            credentials
-                .map { it.username }
-                .toSet()
-
+    override suspend fun process(
+        credentials: List<SynchronizedCredential>,
+        snapshotUsernames: Set<String>,
+    ): CredentialSyncResult {
         val parallelism =
             parallelismStrategy.determine(
                 credentialCount = credentials.size,
