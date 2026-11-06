@@ -1,13 +1,10 @@
 package io.github.johndembaremba.offlineauth.sync
 
 /**
- * Selects bounded parallelism based on the credential count and device CPU.
- *
- * Small batches are processed sequentially, while larger batches use limited
- * concurrency. Parallelism never exceeds the available processor count or
- * the configured maximum.
+ * Selects a conservative level of parallelism based on credential count
+ * and the number of processors available on the device.
  */
-class AdaptiveParallelismStrategy(
+internal class AdaptiveParallelismStrategy(
     private val availableProcessors: Int =
         Runtime.getRuntime().availableProcessors(),
     private val maxParallelism: Int = DEFAULT_MAX_PARALLELISM,
@@ -15,8 +12,8 @@ class AdaptiveParallelismStrategy(
     override fun determine(credentialCount: Int): Int {
         val desiredParallelism =
             when {
-                credentialCount < TEN_USER_THRESHOLD -> 1
-                credentialCount < TWENTY_USER_THRESHOLD -> 2
+                credentialCount < 10 -> 1
+                credentialCount < 20 -> 2
                 else -> 4
             }
 
@@ -29,8 +26,6 @@ class AdaptiveParallelismStrategy(
     }
 
     companion object {
-        private const val TEN_USER_THRESHOLD = 10
-        private const val TWENTY_USER_THRESHOLD = 20
         private const val DEFAULT_MAX_PARALLELISM = 4
     }
 }

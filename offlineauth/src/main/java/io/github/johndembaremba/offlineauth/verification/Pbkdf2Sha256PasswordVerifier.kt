@@ -11,7 +11,7 @@ import javax.crypto.spec.PBEKeySpec
  * Expected format:
  * pbkdf2_sha256$iterations$salt$hash
  */
-class Pbkdf2Sha256PasswordVerifier : PasswordVerifier {
+internal class Pbkdf2Sha256PasswordVerifier : PasswordVerifier {
     override fun verify(
         password: CharArray,
         verifier: String,

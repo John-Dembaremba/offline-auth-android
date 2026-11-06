@@ -7,7 +7,7 @@ import java.time.Instant
 /**
  * Validates whether an offline credential is still usable.
  */
-class CredentialValidator(
+internal class CredentialValidator(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun isValid(credential: OfflineCredential): Boolean {

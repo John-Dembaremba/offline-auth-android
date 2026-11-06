@@ -15,7 +15,7 @@ import javax.crypto.spec.GCMParameterSpec
  * The AES key remains inside Android Keystore. Only the encrypted
  * credential and its nonce are persisted in private SharedPreferences.
  */
-class EncryptedCredentialStore private constructor(
+internal class EncryptedCredentialStore private constructor(
     context: Context,
     private val storageKeyManager: StorageKeyManager,
     private val json: Json,

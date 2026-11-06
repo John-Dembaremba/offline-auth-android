@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
  * Represents a decrypted credential used for offline authentication.
  */
 @Serializable
-data class OfflineCredential(
+internal data class OfflineCredential(
     @SerialName("password_algorithm")
     val passwordAlgorithm: String,
     @SerialName("password_verifier")

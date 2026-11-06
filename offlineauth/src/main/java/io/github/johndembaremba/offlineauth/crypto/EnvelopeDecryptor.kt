@@ -15,7 +15,7 @@ import javax.crypto.spec.SecretKeySpec
  * The wrapped AES key is decrypted using the device RSA private key,
  * then the payload is decrypted using AES-256-GCM.
  */
-class EnvelopeDecryptor(
+internal class EnvelopeDecryptor(
     private val keyStoreManager: KeyStoreManager,
 ) : CredentialDecryptor {
     override fun decrypt(envelope: EncryptedEnvelope): ByteArray {

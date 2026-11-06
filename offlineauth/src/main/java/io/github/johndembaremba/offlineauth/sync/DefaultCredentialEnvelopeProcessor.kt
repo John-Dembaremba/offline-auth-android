@@ -11,7 +11,7 @@ import io.github.johndembaremba.offlineauth.validation.EnvelopeValidator
 /**
  * Decrypts and parses a synchronized offline credential envelope.
  */
-class DefaultCredentialEnvelopeProcessor(
+internal class DefaultCredentialEnvelopeProcessor(
     private val envelopeDecryptor: CredentialDecryptor,
     private val credentialParser: CredentialParser,
     private val envelopeValidator: EnvelopeValidator =

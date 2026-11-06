@@ -3,7 +3,7 @@ package io.github.johndembaremba.offlineauth.verification
 /**
  * Verifies a password against an encoded password verifier.
  */
-fun interface PasswordVerifier {
+internal fun interface PasswordVerifier {
     fun verify(
         password: CharArray,
         verifier: String,

@@ -21,7 +21,7 @@ import kotlinx.coroutines.coroutineScope
  * Failed credentials preserve their existing local credentials.
  * Users missing from the authoritative snapshot are removed.
  */
-class OfflineCredentialSyncProcessor(
+internal class OfflineCredentialSyncProcessor(
     private val envelopeProcessor: CredentialEnvelopeProcessor,
     private val credentialStore: CredentialStore,
     private val parallelismStrategy: ParallelismStrategy =
@@ -148,7 +148,7 @@ class OfflineCredentialSyncProcessor(
         }
 }
 
-data class SynchronizedCredential(
+internal data class SynchronizedCredential(
     val username: String,
     val envelope: EncryptedEnvelope,
 )
