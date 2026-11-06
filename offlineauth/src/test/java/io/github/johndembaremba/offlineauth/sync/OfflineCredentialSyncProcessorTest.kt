@@ -1,6 +1,8 @@
 package io.github.johndembaremba.offlineauth.sync
 
+import io.github.johndembaremba.offlineauth.model.CredentialSyncFailureReason
 import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
+import io.github.johndembaremba.offlineauth.model.LocalCredentialSyncFailureReason
 import io.github.johndembaremba.offlineauth.model.OfflineCredential
 import io.github.johndembaremba.offlineauth.storage.CredentialStore
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +15,8 @@ class OfflineCredentialSyncProcessorTest {
     @Test
     fun process_returnsSuccessfulAndFailedUsernames() =
         runBlocking {
-            val store = FakeCredentialStore()
+            val store =
+                FakeCredentialStore()
 
             val envelopeProcessor =
                 CredentialEnvelopeProcessor { envelope ->
@@ -27,7 +30,7 @@ class OfflineCredentialSyncProcessorTest {
                         "bob" -> {
                             throw CredentialProcessingException(
                                 reason =
-                                    CredentialProcessingFailureReason
+                                    LocalCredentialSyncFailureReason
                                         .DECRYPTION_FAILED,
                             )
                         }
@@ -83,7 +86,11 @@ class OfflineCredentialSyncProcessorTest {
             )
 
             assertEquals(
-                "decryption_failed",
+                CredentialSyncFailureReason.Local(
+                    reason =
+                        LocalCredentialSyncFailureReason
+                            .DECRYPTION_FAILED,
+                ),
                 result.failures.first().reason,
             )
         }
@@ -91,7 +98,8 @@ class OfflineCredentialSyncProcessorTest {
     @Test
     fun process_preservesFailedUsersExistingCredential() =
         runBlocking {
-            val store = FakeCredentialStore()
+            val store =
+                FakeCredentialStore()
 
             val oldBobCredential =
                 credential(
@@ -143,7 +151,8 @@ class OfflineCredentialSyncProcessorTest {
     @Test
     fun process_removesUserMissingFromSnapshot() =
         runBlocking {
-            val store = FakeCredentialStore()
+            val store =
+                FakeCredentialStore()
 
             store.save(
                 username = "charlie",
@@ -224,8 +233,217 @@ class OfflineCredentialSyncProcessorTest {
             )
 
             assertEquals(
-                "credential_processing_failed",
+                CredentialSyncFailureReason.Local(
+                    reason =
+                        LocalCredentialSyncFailureReason
+                            .PROCESSING_FAILED,
+                ),
                 result.failures.first().reason,
+            )
+        }
+
+    @Test
+    fun process_rejectsCredentialVersionRollback() =
+        runBlocking {
+            val store =
+                FakeCredentialStore()
+
+            store.save(
+                username = "bob",
+                credential =
+                    credential(
+                        credentialVersion = 5,
+                    ),
+            )
+
+            val processor =
+                OfflineCredentialSyncProcessor(
+                    envelopeProcessor =
+                        CredentialEnvelopeProcessor {
+                            credential(
+                                credentialVersion = 3,
+                            )
+                        },
+                    credentialStore = store,
+                    parallelismStrategy =
+                        ParallelismStrategy {
+                            1
+                        },
+                    dispatcher = Dispatchers.Default,
+                )
+
+            val result =
+                processor.process(
+                    credentials =
+                        listOf(
+                            synchronizedCredential(
+                                username = "bob",
+                            ),
+                        ),
+                    snapshotUsernames =
+                        setOf(
+                            "bob",
+                        ),
+                )
+
+            assertEquals(
+                5,
+                store.get("bob")?.credentialVersion,
+            )
+
+            assertEquals(
+                1,
+                result.failures.size,
+            )
+
+            val failure =
+                result.failures.first()
+
+            assertEquals(
+                "bob",
+                failure.username,
+            )
+
+            assertEquals(
+                CredentialSyncFailureReason.Local(
+                    reason =
+                        LocalCredentialSyncFailureReason
+                            .CREDENTIAL_VERSION_ROLLBACK,
+                ),
+                failure.reason,
+            )
+
+            assertEquals(
+                5,
+                failure.storedCredentialVersion,
+            )
+
+            assertEquals(
+                3,
+                failure.incomingCredentialVersion,
+            )
+        }
+
+    @Test
+    fun process_allowsSameCredentialVersionReplacement() =
+        runBlocking {
+            val store =
+                FakeCredentialStore()
+
+            val oldCredential =
+                credential(
+                    credentialVersion = 5,
+                )
+
+            store.save(
+                username = "bob",
+                credential = oldCredential,
+            )
+
+            val replacementCredential =
+                credential(
+                    credentialVersion = 5,
+                )
+
+            val processor =
+                OfflineCredentialSyncProcessor(
+                    envelopeProcessor =
+                        CredentialEnvelopeProcessor {
+                            replacementCredential
+                        },
+                    credentialStore = store,
+                    parallelismStrategy =
+                        ParallelismStrategy {
+                            1
+                        },
+                    dispatcher = Dispatchers.Default,
+                )
+
+            val result =
+                processor.process(
+                    credentials =
+                        listOf(
+                            synchronizedCredential(
+                                username = "bob",
+                            ),
+                        ),
+                    snapshotUsernames =
+                        setOf(
+                            "bob",
+                        ),
+                )
+
+            assertEquals(
+                listOf("bob"),
+                result.successfulUsernames,
+            )
+
+            assertTrue(
+                result.failures.isEmpty(),
+            )
+
+            assertEquals(
+                5,
+                store.get("bob")?.credentialVersion,
+            )
+        }
+
+    @Test
+    fun process_allowsHigherCredentialVersionReplacement() =
+        runBlocking {
+            val store =
+                FakeCredentialStore()
+
+            store.save(
+                username = "bob",
+                credential =
+                    credential(
+                        credentialVersion = 5,
+                    ),
+            )
+
+            val processor =
+                OfflineCredentialSyncProcessor(
+                    envelopeProcessor =
+                        CredentialEnvelopeProcessor {
+                            credential(
+                                credentialVersion = 6,
+                            )
+                        },
+                    credentialStore = store,
+                    parallelismStrategy =
+                        ParallelismStrategy {
+                            1
+                        },
+                    dispatcher = Dispatchers.Default,
+                )
+
+            val result =
+                processor.process(
+                    credentials =
+                        listOf(
+                            synchronizedCredential(
+                                username = "bob",
+                            ),
+                        ),
+                    snapshotUsernames =
+                        setOf(
+                            "bob",
+                        ),
+                )
+
+            assertEquals(
+                listOf("bob"),
+                result.successfulUsernames,
+            )
+
+            assertTrue(
+                result.failures.isEmpty(),
+            )
+
+            assertEquals(
+                6,
+                store.get("bob")?.credentialVersion,
             )
         }
 

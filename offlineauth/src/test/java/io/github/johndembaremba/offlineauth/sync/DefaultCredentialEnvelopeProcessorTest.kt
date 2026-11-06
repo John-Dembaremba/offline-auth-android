@@ -1,8 +1,8 @@
 package io.github.johndembaremba.offlineauth.sync
 
 import io.github.johndembaremba.offlineauth.crypto.CredentialDecryptor
-import io.github.johndembaremba.offlineauth.crypto.EnvelopeDecryptor
 import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
+import io.github.johndembaremba.offlineauth.model.LocalCredentialSyncFailureReason
 import io.github.johndembaremba.offlineauth.serialization.CredentialParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -34,7 +34,7 @@ class DefaultCredentialEnvelopeProcessorTest {
             }
 
         assertEquals(
-            CredentialProcessingFailureReason.DECRYPTION_FAILED,
+            LocalCredentialSyncFailureReason.DECRYPTION_FAILED,
             exception.reason,
         )
 
@@ -71,12 +71,94 @@ class DefaultCredentialEnvelopeProcessorTest {
             }
 
         assertEquals(
-            CredentialProcessingFailureReason.INVALID_CREDENTIAL_PAYLOAD,
+            LocalCredentialSyncFailureReason.INVALID_CREDENTIAL_PAYLOAD,
             exception.reason,
         )
 
         assertEquals(
             "invalid_credential_payload",
+            exception.reason.code,
+        )
+    }
+
+    @Test
+    fun process_returnsCredentialValidationFailedWhenCredentialIsInvalid() {
+        val decryptor =
+            CredentialDecryptor {
+                """
+                {
+                  "password_algorithm": "pbkdf2_sha256",
+                  "password_verifier": "verifier",
+                  "credential_version": 0,
+                  "issued_at": "2026-11-06T08:00:00Z",
+                  "expires_at": "2026-11-07T08:00:00Z"
+                }
+                """.trimIndent().encodeToByteArray()
+            }
+
+        val processor =
+            DefaultCredentialEnvelopeProcessor(
+                envelopeDecryptor = decryptor,
+                credentialParser = CredentialParser(),
+            )
+
+        val exception =
+            assertThrows(
+                CredentialProcessingException::class.java,
+            ) {
+                processor.process(
+                    envelope = envelope(),
+                )
+            }
+
+        assertEquals(
+            LocalCredentialSyncFailureReason.CREDENTIAL_VALIDATION_FAILED,
+            exception.reason,
+        )
+
+        assertEquals(
+            "credential_validation_failed",
+            exception.reason.code,
+        )
+    }
+
+    @Test
+    fun process_rejectsUnsupportedPasswordAlgorithm() {
+        val decryptor =
+            CredentialDecryptor {
+                """
+                {
+                  "password_algorithm": "argon2",
+                  "password_verifier": "verifier",
+                  "credential_version": 1,
+                  "issued_at": "2026-11-06T08:00:00Z",
+                  "expires_at": "2030-11-07T08:00:00Z"
+                }
+                """.trimIndent().encodeToByteArray()
+            }
+
+        val processor =
+            DefaultCredentialEnvelopeProcessor(
+                envelopeDecryptor = decryptor,
+                credentialParser = CredentialParser(),
+            )
+
+        val exception =
+            assertThrows(
+                CredentialProcessingException::class.java,
+            ) {
+                processor.process(
+                    envelope = envelope(),
+                )
+            }
+
+        assertEquals(
+            LocalCredentialSyncFailureReason.UNSUPPORTED_PASSWORD_ALGORITHM,
+            exception.reason,
+        )
+
+        assertEquals(
+            "unsupported_password_algorithm",
             exception.reason.code,
         )
     }

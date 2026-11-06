@@ -1,6 +1,10 @@
 package io.github.johndembaremba.offlineauth.sync
 
+import io.github.johndembaremba.offlineauth.model.CredentialSyncFailure
+import io.github.johndembaremba.offlineauth.model.CredentialSyncFailureReason
+import io.github.johndembaremba.offlineauth.model.CredentialSyncResult
 import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
+import io.github.johndembaremba.offlineauth.model.LocalCredentialSyncFailureReason
 import io.github.johndembaremba.offlineauth.model.OfflineCredential
 import io.github.johndembaremba.offlineauth.storage.CredentialStore
 import kotlinx.coroutines.CoroutineDispatcher
@@ -51,32 +55,70 @@ class OfflineCredentialSyncProcessor(
                     }.awaitAll()
             }
 
-        val successfulCredentials =
+        val processingSuccesses =
             results
                 .filterIsInstance<CredentialProcessingResult.Success>()
-                .associate { result ->
-                    result.username to result.credential
-                }
 
-        val failures =
+        val processingFailures =
             results
                 .filterIsInstance<CredentialProcessingResult.Failure>()
                 .map { result ->
                     CredentialSyncFailure(
                         username = result.username,
-                        reason = result.reason,
+                        reason =
+                            CredentialSyncFailureReason.Local(
+                                reason = result.reason,
+                            ),
                     )
                 }
 
+        val acceptedCredentials =
+            mutableMapOf<String, OfflineCredential>()
+
+        val rollbackFailures =
+            mutableListOf<CredentialSyncFailure>()
+
+        processingSuccesses.forEach { result ->
+            val existingCredential =
+                credentialStore.get(
+                    username = result.username,
+                )
+
+            if (
+                existingCredential != null &&
+                result.credential.credentialVersion <
+                existingCredential.credentialVersion
+            ) {
+                rollbackFailures +=
+                    CredentialSyncFailure(
+                        username = result.username,
+                        reason =
+                            CredentialSyncFailureReason.Local(
+                                reason =
+                                    LocalCredentialSyncFailureReason
+                                        .CREDENTIAL_VERSION_ROLLBACK,
+                            ),
+                        storedCredentialVersion =
+                            existingCredential.credentialVersion,
+                        incomingCredentialVersion =
+                            result.credential.credentialVersion,
+                    )
+            } else {
+                acceptedCredentials[result.username] =
+                    result.credential
+            }
+        }
+
         credentialStore.applySnapshot(
-            successfulCredentials = successfulCredentials,
+            successfulCredentials = acceptedCredentials,
             snapshotUsernames = snapshotUsernames,
         )
 
         return CredentialSyncResult(
             successfulUsernames =
-                successfulCredentials.keys.toList(),
-            failures = failures,
+                acceptedCredentials.keys.toList(),
+            failures =
+                processingFailures + rollbackFailures,
         )
     }
 
@@ -94,15 +136,14 @@ class OfflineCredentialSyncProcessor(
         } catch (exception: CredentialProcessingException) {
             CredentialProcessingResult.Failure(
                 username = synchronizedCredential.username,
-                reason = exception.reason.code,
+                reason = exception.reason,
             )
         } catch (_: Exception) {
             CredentialProcessingResult.Failure(
                 username = synchronizedCredential.username,
                 reason =
-                    CredentialProcessingFailureReason
-                        .PROCESSING_FAILED
-                        .code,
+                    LocalCredentialSyncFailureReason
+                        .PROCESSING_FAILED,
             )
         }
 }
@@ -110,16 +151,6 @@ class OfflineCredentialSyncProcessor(
 data class SynchronizedCredential(
     val username: String,
     val envelope: EncryptedEnvelope,
-)
-
-data class CredentialSyncResult(
-    val successfulUsernames: List<String>,
-    val failures: List<CredentialSyncFailure>,
-)
-
-data class CredentialSyncFailure(
-    val username: String,
-    val reason: String,
 )
 
 private sealed interface CredentialProcessingResult {
@@ -130,6 +161,6 @@ private sealed interface CredentialProcessingResult {
 
     data class Failure(
         val username: String,
-        val reason: String,
+        val reason: LocalCredentialSyncFailureReason,
     ) : CredentialProcessingResult
 }

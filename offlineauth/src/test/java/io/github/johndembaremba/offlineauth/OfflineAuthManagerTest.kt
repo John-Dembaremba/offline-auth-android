@@ -3,14 +3,17 @@ package io.github.johndembaremba.offlineauth
 import io.github.johndembaremba.offlineauth.auth.OfflineAuthenticator
 import io.github.johndembaremba.offlineauth.crypto.PublicKeyProvider
 import io.github.johndembaremba.offlineauth.model.CredentialFailurePayload
+import io.github.johndembaremba.offlineauth.model.CredentialSyncFailureReason
+import io.github.johndembaremba.offlineauth.model.CredentialSyncResult
 import io.github.johndembaremba.offlineauth.model.OfflineCredential
 import io.github.johndembaremba.offlineauth.model.OfflineCredentialSnapshot
 import io.github.johndembaremba.offlineauth.storage.CredentialStore
 import io.github.johndembaremba.offlineauth.sync.CredentialSyncProcessor
-import io.github.johndembaremba.offlineauth.sync.CredentialSyncResult
+import io.github.johndembaremba.offlineauth.sync.UnsupportedProtocolVersionException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class OfflineAuthManagerTest {
@@ -128,10 +131,41 @@ class OfflineAuthManagerTest {
             )
 
             assertEquals(
-                "unusable_password",
+                CredentialSyncFailureReason.Backend(
+                    reason = "unusable_password",
+                ),
                 result.failures.first().reason,
             )
         }
+
+    @Test
+    fun sync_rejectsUnsupportedProtocolVersion() {
+        val manager =
+            manager()
+
+        val snapshot =
+            OfflineCredentialSnapshot(
+                protocolVersion = 2,
+                credentials = emptyList(),
+                failures = emptyList(),
+            )
+
+        val exception =
+            assertThrows(
+                UnsupportedProtocolVersionException::class.java,
+            ) {
+                runBlocking {
+                    manager.sync(
+                        snapshot = snapshot,
+                    )
+                }
+            }
+
+        assertEquals(
+            2,
+            exception.protocolVersion,
+        )
+    }
 
     private fun manager(
         publicKeyProvider: PublicKeyProvider =
