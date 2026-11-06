@@ -91,19 +91,20 @@ class OfflineCredentialSyncProcessor(
                 username = synchronizedCredential.username,
                 credential = credential,
             )
-        } catch (exception: Exception) {
+        } catch (exception: CredentialProcessingException) {
+            CredentialProcessingResult.Failure(
+                username = synchronizedCredential.username,
+                reason = exception.reason.code,
+            )
+        } catch (_: Exception) {
             CredentialProcessingResult.Failure(
                 username = synchronizedCredential.username,
                 reason =
-                    exception.message
-                        ?: DEFAULT_FAILURE_REASON,
+                    CredentialProcessingFailureReason
+                        .PROCESSING_FAILED
+                        .code,
             )
         }
-
-    companion object {
-        private const val DEFAULT_FAILURE_REASON =
-            "credential_processing_failed"
-    }
 }
 
 data class SynchronizedCredential(
