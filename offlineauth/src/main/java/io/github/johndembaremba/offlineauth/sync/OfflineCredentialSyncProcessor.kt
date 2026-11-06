@@ -51,14 +51,11 @@ class OfflineCredentialSyncProcessor(
                     }.awaitAll()
             }
 
-        val successfulCredentials =
+        val processingSuccesses =
             results
                 .filterIsInstance<CredentialProcessingResult.Success>()
-                .associate { result ->
-                    result.username to result.credential
-                }
 
-        val failures =
+        val processingFailures =
             results
                 .filterIsInstance<CredentialProcessingResult.Failure>()
                 .map { result ->
@@ -68,15 +65,60 @@ class OfflineCredentialSyncProcessor(
                     )
                 }
 
+        val acceptedCredentials =
+            mutableMapOf<String, OfflineCredential>()
+
+        val rollbackFailures =
+            mutableListOf<CredentialSyncFailure>()
+
+        processingSuccesses.forEach { result ->
+            val existingCredential =
+                credentialStore.get(
+                    username = result.username,
+                )
+
+            if (
+                existingCredential != null &&
+                result.credential.credentialVersion <
+                existingCredential.credentialVersion
+            ) {
+                val exception =
+                    CredentialVersionRollbackException(
+                        username = result.username,
+                        storedCredentialVersion =
+                            existingCredential.credentialVersion,
+                        incomingCredentialVersion =
+                            result.credential.credentialVersion,
+                    )
+
+                rollbackFailures +=
+                    CredentialSyncFailure(
+                        username = exception.username,
+                        reason =
+                            CredentialProcessingFailureReason
+                                .CREDENTIAL_VERSION_ROLLBACK
+                                .code,
+                        storedCredentialVersion =
+                            exception.storedCredentialVersion,
+                        incomingCredentialVersion =
+                            exception.incomingCredentialVersion,
+                    )
+            } else {
+                acceptedCredentials[result.username] =
+                    result.credential
+            }
+        }
+
         credentialStore.applySnapshot(
-            successfulCredentials = successfulCredentials,
+            successfulCredentials = acceptedCredentials,
             snapshotUsernames = snapshotUsernames,
         )
 
         return CredentialSyncResult(
             successfulUsernames =
-                successfulCredentials.keys.toList(),
-            failures = failures,
+                acceptedCredentials.keys.toList(),
+            failures =
+                processingFailures + rollbackFailures,
         )
     }
 
@@ -120,6 +162,8 @@ data class CredentialSyncResult(
 data class CredentialSyncFailure(
     val username: String,
     val reason: String,
+    val storedCredentialVersion: Int? = null,
+    val incomingCredentialVersion: Int? = null,
 )
 
 private sealed interface CredentialProcessingResult {

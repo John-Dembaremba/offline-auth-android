@@ -11,6 +11,14 @@ class CredentialProcessingException(
 enum class CredentialProcessingFailureReason(
     val code: String,
 ) {
+    UNSUPPORTED_KEY_ALGORITHM(
+        code = "unsupported_key_algorithm",
+    ),
+
+    UNSUPPORTED_CONTENT_ALGORITHM(
+        code = "unsupported_content_algorithm",
+    ),
+
     DECRYPTION_FAILED(
         code = "decryption_failed",
     ),
@@ -21,5 +29,14 @@ enum class CredentialProcessingFailureReason(
 
     PROCESSING_FAILED(
         code = "credential_processing_failed",
+    ),
+    CREDENTIAL_VALIDATION_FAILED(
+        code = "credential_validation_failed",
+    ),
+    UNSUPPORTED_PASSWORD_ALGORITHM(
+        code = "unsupported_password_algorithm",
+    ),
+    CREDENTIAL_VERSION_ROLLBACK(
+        code = "credential_version_rollback",
     ),
 }

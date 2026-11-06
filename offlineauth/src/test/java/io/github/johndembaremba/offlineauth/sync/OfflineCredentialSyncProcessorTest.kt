@@ -229,6 +229,207 @@ class OfflineCredentialSyncProcessorTest {
             )
         }
 
+    @Test
+    fun process_rejectsCredentialVersionRollback() =
+        runBlocking {
+            val store =
+                FakeCredentialStore()
+
+            store.save(
+                username = "bob",
+                credential =
+                    credential(
+                        credentialVersion = 5,
+                    ),
+            )
+
+            val processor =
+                OfflineCredentialSyncProcessor(
+                    envelopeProcessor =
+                        CredentialEnvelopeProcessor {
+                            credential(
+                                credentialVersion = 3,
+                            )
+                        },
+                    credentialStore = store,
+                    parallelismStrategy =
+                        ParallelismStrategy {
+                            1
+                        },
+                    dispatcher = Dispatchers.Default,
+                )
+
+            val result =
+                processor.process(
+                    credentials =
+                        listOf(
+                            synchronizedCredential(
+                                username = "bob",
+                            ),
+                        ),
+                    snapshotUsernames =
+                        setOf(
+                            "bob",
+                        ),
+                )
+
+            assertEquals(
+                5,
+                store.get("bob")?.credentialVersion,
+            )
+
+            assertEquals(
+                1,
+                result.failures.size,
+            )
+
+            val failure =
+                result.failures.first()
+
+            assertEquals(
+                "bob",
+                failure.username,
+            )
+
+            assertEquals(
+                "credential_version_rollback",
+                failure.reason,
+            )
+
+            assertEquals(
+                5,
+                failure.storedCredentialVersion,
+            )
+
+            assertEquals(
+                3,
+                failure.incomingCredentialVersion,
+            )
+        }
+
+    @Test
+    fun process_allowsSameCredentialVersionReplacement() =
+        runBlocking {
+            val store =
+                FakeCredentialStore()
+
+            val oldCredential =
+                credential(
+                    credentialVersion = 5,
+                )
+
+            store.save(
+                username = "bob",
+                credential = oldCredential,
+            )
+
+            val replacementCredential =
+                credential(
+                    credentialVersion = 5,
+                )
+
+            val processor =
+                OfflineCredentialSyncProcessor(
+                    envelopeProcessor =
+                        CredentialEnvelopeProcessor {
+                            replacementCredential
+                        },
+                    credentialStore = store,
+                    parallelismStrategy =
+                        ParallelismStrategy {
+                            1
+                        },
+                    dispatcher = Dispatchers.Default,
+                )
+
+            val result =
+                processor.process(
+                    credentials =
+                        listOf(
+                            synchronizedCredential(
+                                username = "bob",
+                            ),
+                        ),
+                    snapshotUsernames =
+                        setOf(
+                            "bob",
+                        ),
+                )
+
+            assertEquals(
+                listOf("bob"),
+                result.successfulUsernames,
+            )
+
+            assertTrue(
+                result.failures.isEmpty(),
+            )
+
+            assertEquals(
+                5,
+                store.get("bob")?.credentialVersion,
+            )
+        }
+
+    @Test
+    fun process_allowsHigherCredentialVersionReplacement() =
+        runBlocking {
+            val store =
+                FakeCredentialStore()
+
+            store.save(
+                username = "bob",
+                credential =
+                    credential(
+                        credentialVersion = 5,
+                    ),
+            )
+
+            val processor =
+                OfflineCredentialSyncProcessor(
+                    envelopeProcessor =
+                        CredentialEnvelopeProcessor {
+                            credential(
+                                credentialVersion = 6,
+                            )
+                        },
+                    credentialStore = store,
+                    parallelismStrategy =
+                        ParallelismStrategy {
+                            1
+                        },
+                    dispatcher = Dispatchers.Default,
+                )
+
+            val result =
+                processor.process(
+                    credentials =
+                        listOf(
+                            synchronizedCredential(
+                                username = "bob",
+                            ),
+                        ),
+                    snapshotUsernames =
+                        setOf(
+                            "bob",
+                        ),
+                )
+
+            assertEquals(
+                listOf("bob"),
+                result.successfulUsernames,
+            )
+
+            assertTrue(
+                result.failures.isEmpty(),
+            )
+
+            assertEquals(
+                6,
+                store.get("bob")?.credentialVersion,
+            )
+        }
+
     private fun synchronizedCredential(username: String): SynchronizedCredential =
         SynchronizedCredential(
             username = username,

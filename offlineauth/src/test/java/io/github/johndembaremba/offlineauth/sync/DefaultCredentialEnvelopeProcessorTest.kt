@@ -81,6 +81,88 @@ class DefaultCredentialEnvelopeProcessorTest {
         )
     }
 
+    @Test
+    fun process_returnsCredentialValidationFailedWhenCredentialIsInvalid() {
+        val decryptor =
+            CredentialDecryptor {
+                """
+                {
+                  "password_algorithm": "pbkdf2_sha256",
+                  "password_verifier": "verifier",
+                  "credential_version": 0,
+                  "issued_at": "2026-11-06T08:00:00Z",
+                  "expires_at": "2026-11-07T08:00:00Z"
+                }
+                """.trimIndent().encodeToByteArray()
+            }
+
+        val processor =
+            DefaultCredentialEnvelopeProcessor(
+                envelopeDecryptor = decryptor,
+                credentialParser = CredentialParser(),
+            )
+
+        val exception =
+            assertThrows(
+                CredentialProcessingException::class.java,
+            ) {
+                processor.process(
+                    envelope = envelope(),
+                )
+            }
+
+        assertEquals(
+            CredentialProcessingFailureReason.CREDENTIAL_VALIDATION_FAILED,
+            exception.reason,
+        )
+
+        assertEquals(
+            "credential_validation_failed",
+            exception.reason.code,
+        )
+    }
+
+    @Test
+    fun process_rejectsUnsupportedPasswordAlgorithm() {
+        val decryptor =
+            CredentialDecryptor {
+                """
+                {
+                  "password_algorithm": "argon2",
+                  "password_verifier": "verifier",
+                  "credential_version": 1,
+                  "issued_at": "2026-11-06T08:00:00Z",
+                  "expires_at": "2030-11-07T08:00:00Z"
+                }
+                """.trimIndent().encodeToByteArray()
+            }
+
+        val processor =
+            DefaultCredentialEnvelopeProcessor(
+                envelopeDecryptor = decryptor,
+                credentialParser = CredentialParser(),
+            )
+
+        val exception =
+            assertThrows(
+                CredentialProcessingException::class.java,
+            ) {
+                processor.process(
+                    envelope = envelope(),
+                )
+            }
+
+        assertEquals(
+            CredentialProcessingFailureReason.UNSUPPORTED_PASSWORD_ALGORITHM,
+            exception.reason,
+        )
+
+        assertEquals(
+            "unsupported_password_algorithm",
+            exception.reason.code,
+        )
+    }
+
     private fun envelope(): EncryptedEnvelope =
         EncryptedEnvelope(
             keyAlgorithm = "RSA-OAEP-256",

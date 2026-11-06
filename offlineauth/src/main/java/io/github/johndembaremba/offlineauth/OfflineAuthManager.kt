@@ -16,6 +16,7 @@ import io.github.johndembaremba.offlineauth.sync.CredentialSyncResult
 import io.github.johndembaremba.offlineauth.sync.DefaultCredentialEnvelopeProcessor
 import io.github.johndembaremba.offlineauth.sync.OfflineCredentialSyncProcessor
 import io.github.johndembaremba.offlineauth.sync.SynchronizedCredential
+import io.github.johndembaremba.offlineauth.sync.UnsupportedProtocolVersionException
 
 /**
  * Main entry point for offline authentication.
@@ -28,7 +29,19 @@ class OfflineAuthManager internal constructor(
 ) {
     fun getPublicKey(): String = publicKeyProvider.getPublicKey()
 
+    private fun validateProtocolVersion(protocolVersion: Int) {
+        if (protocolVersion != SUPPORTED_PROTOCOL_VERSION) {
+            throw UnsupportedProtocolVersionException(
+                protocolVersion = protocolVersion,
+            )
+        }
+    }
+
     suspend fun sync(snapshot: OfflineCredentialSnapshot): CredentialSyncResult {
+        validateProtocolVersion(
+            protocolVersion = snapshot.protocolVersion,
+        )
+
         val synchronizedCredentials =
             snapshot.credentials.map { credential ->
                 SynchronizedCredential(
@@ -86,6 +99,8 @@ class OfflineAuthManager internal constructor(
     }
 
     companion object {
+        const val SUPPORTED_PROTOCOL_VERSION = 1
+
         fun create(context: Context): OfflineAuthManager {
             val applicationContext =
                 context.applicationContext
