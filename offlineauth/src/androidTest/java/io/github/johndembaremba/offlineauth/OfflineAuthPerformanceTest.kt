@@ -44,10 +44,11 @@ class OfflineAuthPerformanceTest {
                 )
 
             /*
-             * Perform one warm-up sync before collecting measurements.
+             * Warm up the main sync path before collecting measurements.
              *
-             * This reduces distortion from class loading, JIT compilation,
-             * Keystore initialization, and other first-run work.
+             * This helps reduce distortion from first-run work such as
+             * class loading, JIT compilation, Keystore initialization,
+             * and encrypted storage setup.
              */
             val warmupSnapshot =
                 createSnapshot(
@@ -67,12 +68,18 @@ class OfflineAuthPerformanceTest {
                 "Available processors: ${Runtime.getRuntime().availableProcessors()}",
             )
 
+            Log.i(
+                TAG,
+                "Runs per workload: $REPEAT_COUNT",
+            )
+
             for (userCount in USER_COUNTS) {
                 /*
-                 * Snapshot construction and backend-style encryption happen
-                 * before the timer starts.
+                 * Build the encrypted snapshot before starting any timer.
                  *
-                 * We want to measure Android library sync performance only.
+                 * Backend-style encryption is intentionally excluded from
+                 * the benchmark because we want to measure the Android
+                 * library's sync path only.
                  */
                 val snapshot =
                     createSnapshot(
@@ -80,49 +87,105 @@ class OfflineAuthPerformanceTest {
                         userCount = userCount,
                     )
 
-                val start =
-                    System.nanoTime()
+                val durations =
+                    mutableListOf<Double>()
 
-                val result =
-                    manager.sync(snapshot)
+                repeat(REPEAT_COUNT) { runIndex ->
+                    /*
+                     * Only manager.sync(snapshot) is measured.
+                     */
+                    val start =
+                        System.nanoTime()
 
-                val duration =
-                    System.nanoTime() - start
+                    val result =
+                        manager.sync(snapshot)
 
-                val durationMs =
-                    duration / NANOS_PER_MILLISECOND
+                    val duration =
+                        System.nanoTime() - start
 
-                val averagePerUserMs =
-                    durationMs / userCount.toDouble()
+                    val durationMs =
+                        duration / NANOS_PER_MILLISECOND
 
-                assertEquals(
-                    userCount,
-                    result.successfulUsernames.size,
-                )
+                    durations += durationMs
 
-                assertTrue(
-                    result.failures.isEmpty(),
-                )
+                    assertEquals(
+                        userCount,
+                        result.successfulUsernames.size,
+                    )
+
+                    assertTrue(
+                        result.failures.isEmpty(),
+                    )
+
+                    Log.i(
+                        TAG,
+                        buildString {
+                            append("run=")
+                            append(runIndex + 1)
+
+                            append("/")
+                            append(REPEAT_COUNT)
+
+                            append(" | users=")
+                            append(userCount)
+
+                            append(" | total=")
+                            append(format(durationMs))
+                            append(" ms")
+
+                            append(" | avg/user=")
+                            append(
+                                format(
+                                    durationMs / userCount.toDouble(),
+                                ),
+                            )
+                            append(" ms")
+
+                            append(" | success=")
+                            append(result.successfulUsernames.size)
+
+                            append(" | failures=")
+                            append(result.failures.size)
+                        },
+                    )
+                }
+
+                val statistics =
+                    calculateStatistics(
+                        durations = durations,
+                        userCount = userCount,
+                    )
 
                 Log.i(
                     TAG,
                     buildString {
-                        append("users=")
+                        append("SUMMARY")
+
+                        append(" | users=")
                         append(userCount)
 
-                        append(" | total=")
-                        append(format(durationMs))
-                        append(" ms")
+                        append(" | runs=")
+                        append(REPEAT_COUNT)
 
                         append(" | avg=")
-                        append(format(averagePerUserMs))
-                        append(" ms/user")
+                        append(format(statistics.averageMs))
+                        append(" ms")
 
-                        append(" | success=")
-                        append(result.successfulUsernames.size)
+                        append(" | median=")
+                        append(format(statistics.medianMs))
+                        append(" ms")
 
-                        append(" | failures=")
-                        append(result.failures.size)
+                        append(" | min=")
+                        append(format(statistics.minimumMs))
+                        append(" ms")
+
+                        append(" | max=")
+                        append(format(statistics.maximumMs))
+                        append(" ms")
+
+                        append(" | avg/user=")
+                        append(format(statistics.averagePerUserMs))
+                        append(" ms")
                     },
                 )
             }
@@ -131,6 +194,48 @@ class OfflineAuthPerformanceTest {
                 TAG,
                 "===================================================",
             )
+        }
+    }
+
+    private fun calculateStatistics(
+        durations: List<Double>,
+        userCount: Int,
+    ): PerformanceStatistics {
+        require(durations.isNotEmpty()) {
+            "At least one duration is required."
+        }
+
+        val sortedDurations =
+            durations.sorted()
+
+        val averageMs =
+            durations.average()
+
+        val medianMs =
+            calculateMedian(
+                sortedValues = sortedDurations,
+            )
+
+        return PerformanceStatistics(
+            averageMs = averageMs,
+            medianMs = medianMs,
+            minimumMs = sortedDurations.first(),
+            maximumMs = sortedDurations.last(),
+            averagePerUserMs = averageMs / userCount.toDouble(),
+        )
+    }
+
+    private fun calculateMedian(sortedValues: List<Double>): Double {
+        val middleIndex =
+            sortedValues.size / 2
+
+        return if (sortedValues.size % 2 == 0) {
+            (
+                sortedValues[middleIndex - 1] +
+                    sortedValues[middleIndex]
+            ) / 2.0
+        } else {
+            sortedValues[middleIndex]
         }
     }
 
@@ -148,10 +253,10 @@ class OfflineAuthPerformanceTest {
             now.plusSeconds(CREDENTIAL_TTL_SECONDS)
 
         /*
-         * Generate the PBKDF2 verifier only once.
+         * PBKDF2 generation is intentionally outside the timed sync path.
          *
-         * Every test user may use the same verifier because password hashing
-         * is not part of the sync benchmark.
+         * All users can share the same password verifier for this benchmark
+         * because password hashing itself is not what we are measuring.
          */
         val passwordVerifier =
             createPasswordVerifier(
@@ -341,6 +446,14 @@ class OfflineAuthPerformanceTest {
             value,
         )
 
+    private data class PerformanceStatistics(
+        val averageMs: Double,
+        val medianMs: Double,
+        val minimumMs: Double,
+        val maximumMs: Double,
+        val averagePerUserMs: Double,
+    )
+
     companion object {
         private const val TAG =
             "OfflineAuthPerf"
@@ -354,6 +467,9 @@ class OfflineAuthPerformanceTest {
                 500,
                 1000,
             )
+
+        private const val REPEAT_COUNT =
+            5
 
         private const val TEST_PASSWORD =
             "performance-test-password"

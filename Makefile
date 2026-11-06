@@ -1,4 +1,20 @@
-.PHONY: all format format-check lint test android-test android-test-compile build clean setup-precommit precommit
+.PHONY: all \
+	format \
+	format-check \
+	lint \
+	test \
+	android-test \
+	android-test-compile \
+	android-performance-test \
+	android-parallelism-test \
+	android-memory-test \
+	android-stress-test \
+	android-mixed-failure-test \
+	android-full-test \
+	build \
+	clean \
+	setup-precommit \
+	precommit
 
 all: format lint test android-test-compile build
 
@@ -18,6 +34,30 @@ android-test-compile:
 	./gradlew :offlineauth:compileDebugAndroidTestKotlin
 
 android-test:
+	./gradlew :offlineauth:connectedDebugAndroidTest \
+		-Pandroid.testInstrumentationRunnerArguments.notClass="io.github.johndembaremba.offlineauth.OfflineAuthPerformanceTest,io.github.johndembaremba.offlineauth.OfflineAuthParallelismPerformanceTest,io.github.johndembaremba.offlineauth.OfflineAuthMemoryPerformanceTest,io.github.johndembaremba.offlineauth.OfflineAuthStressTest,io.github.johndembaremba.offlineauth.OfflineAuthMixedFailureStressTest"
+
+android-performance-test:
+	./gradlew :offlineauth:connectedDebugAndroidTest \
+		-Pandroid.testInstrumentationRunnerArguments.class=io.github.johndembaremba.offlineauth.OfflineAuthPerformanceTest
+
+android-parallelism-test:
+	./gradlew :offlineauth:connectedDebugAndroidTest \
+		-Pandroid.testInstrumentationRunnerArguments.class=io.github.johndembaremba.offlineauth.OfflineAuthParallelismPerformanceTest
+
+android-memory-test:
+	./gradlew :offlineauth:connectedDebugAndroidTest \
+		-Pandroid.testInstrumentationRunnerArguments.class=io.github.johndembaremba.offlineauth.OfflineAuthMemoryPerformanceTest
+
+android-stress-test:
+	./gradlew :offlineauth:connectedDebugAndroidTest \
+		-Pandroid.testInstrumentationRunnerArguments.class=io.github.johndembaremba.offlineauth.OfflineAuthStressTest
+
+android-mixed-failure-test:
+	./gradlew :offlineauth:connectedDebugAndroidTest \
+		-Pandroid.testInstrumentationRunnerArguments.class=io.github.johndembaremba.offlineauth.OfflineAuthMixedFailureStressTest
+
+android-full-test:
 	./gradlew :offlineauth:connectedDebugAndroidTest
 
 build:
