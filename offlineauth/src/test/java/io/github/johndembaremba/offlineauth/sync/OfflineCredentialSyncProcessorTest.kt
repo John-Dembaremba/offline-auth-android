@@ -25,8 +25,10 @@ class OfflineCredentialSyncProcessorTest {
                         }
 
                         "bob" -> {
-                            throw IllegalStateException(
-                                "decryption_failed",
+                            throw CredentialProcessingException(
+                                reason =
+                                    CredentialProcessingFailureReason
+                                        .DECRYPTION_FAILED,
                             )
                         }
 
@@ -78,6 +80,11 @@ class OfflineCredentialSyncProcessorTest {
             assertEquals(
                 "bob",
                 result.failures.first().username,
+            )
+
+            assertEquals(
+                "decryption_failed",
+                result.failures.first().reason,
             )
         }
 
@@ -172,6 +179,53 @@ class OfflineCredentialSyncProcessorTest {
 
             assertTrue(
                 store.get("charlie") == null,
+            )
+        }
+
+    @Test
+    fun process_returnsStableReasonForUnexpectedFailure() =
+        runBlocking {
+            val store =
+                FakeCredentialStore()
+
+            val processor =
+                OfflineCredentialSyncProcessor(
+                    envelopeProcessor =
+                        CredentialEnvelopeProcessor {
+                            throw IllegalStateException(
+                                "secret internal error message",
+                            )
+                        },
+                    credentialStore = store,
+                    parallelismStrategy =
+                        ParallelismStrategy {
+                            1
+                        },
+                    dispatcher = Dispatchers.Default,
+                )
+
+            val result =
+                processor.process(
+                    credentials =
+                        listOf(
+                            synchronizedCredential(
+                                username = "alice",
+                            ),
+                        ),
+                    snapshotUsernames =
+                        setOf(
+                            "alice",
+                        ),
+                )
+
+            assertEquals(
+                1,
+                result.failures.size,
+            )
+
+            assertEquals(
+                "credential_processing_failed",
+                result.failures.first().reason,
             )
         }
 

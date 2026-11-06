@@ -17,11 +17,11 @@ import javax.crypto.spec.SecretKeySpec
  */
 class EnvelopeDecryptor(
     private val keyStoreManager: KeyStoreManager,
-) {
-    fun decrypt(envelope: EncryptedEnvelope): ByteArray {
+) : CredentialDecryptor {
+    override fun decrypt(envelope: EncryptedEnvelope): ByteArray {
         val aesKey =
             decryptAesKey(
-                envelope.encryptedKey,
+                encryptedKey = envelope.encryptedKey,
             )
 
         return decryptPayload(
@@ -32,7 +32,8 @@ class EnvelopeDecryptor(
     }
 
     private fun decryptAesKey(encryptedKey: String): ByteArray {
-        val privateKey = keyStoreManager.getPrivateKey()
+        val privateKey =
+            keyStoreManager.getPrivateKey()
 
         val cipher =
             Cipher.getInstance(
@@ -107,8 +108,10 @@ class EnvelopeDecryptor(
         private const val AES_GCM_TRANSFORMATION =
             "AES/GCM/NoPadding"
 
-        private const val AES_ALGORITHM = "AES"
+        private const val AES_ALGORITHM =
+            "AES"
 
-        private const val GCM_TAG_LENGTH_BITS = 128
+        private const val GCM_TAG_LENGTH_BITS =
+            128
     }
 }
