@@ -5,7 +5,7 @@ import io.github.johndembaremba.offlineauth.model.LocalCredentialSyncFailureReas
 /**
  * Represents a predictable failure while processing a synchronized credential.
  */
-class CredentialProcessingException(
+internal class CredentialProcessingException(
     val reason: LocalCredentialSyncFailureReason,
     cause: Throwable? = null,
 ) : RuntimeException(

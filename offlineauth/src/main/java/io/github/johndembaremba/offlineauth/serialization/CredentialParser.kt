@@ -6,7 +6,7 @@ import kotlinx.serialization.json.Json
 /**
  * Parses decrypted credential payloads into offline credential models.
  */
-class CredentialParser(
+internal class CredentialParser(
     private val json: Json =
         Json {
             ignoreUnknownKeys = true

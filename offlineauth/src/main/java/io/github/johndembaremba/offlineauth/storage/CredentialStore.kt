@@ -5,7 +5,7 @@ import io.github.johndembaremba.offlineauth.model.OfflineCredential
 /**
  * Stores and retrieves synchronized offline credentials.
  */
-interface CredentialStore {
+internal interface CredentialStore {
     fun save(
         username: String,
         credential: OfflineCredential,

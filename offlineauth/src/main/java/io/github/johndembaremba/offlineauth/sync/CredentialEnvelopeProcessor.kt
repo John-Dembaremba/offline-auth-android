@@ -6,6 +6,6 @@ import io.github.johndembaremba.offlineauth.model.OfflineCredential
 /**
  * Converts an encrypted credential envelope into an offline credential.
  */
-fun interface CredentialEnvelopeProcessor {
+internal fun interface CredentialEnvelopeProcessor {
     fun process(envelope: EncryptedEnvelope): OfflineCredential
 }

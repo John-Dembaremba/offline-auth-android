@@ -7,7 +7,7 @@ import io.github.johndembaremba.offlineauth.sync.CredentialProcessingException
 /**
  * Validates that an encrypted envelope uses supported algorithms.
  */
-class EnvelopeValidator {
+internal class EnvelopeValidator {
     fun validate(envelope: EncryptedEnvelope) {
         if (envelope.keyAlgorithm != SUPPORTED_KEY_ALGORITHM) {
             throw CredentialProcessingException(

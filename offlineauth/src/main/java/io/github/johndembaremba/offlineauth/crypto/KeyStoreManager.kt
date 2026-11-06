@@ -17,7 +17,7 @@ import java.security.PublicKey
  *
  * @property keyAlias name the key pair is stored under in the keystore.
  */
-class KeyStoreManager(
+internal class KeyStoreManager(
     private val keyAlias: String = DEFAULT_KEY_ALIAS,
 ) : PublicKeyProvider {
     private val keyStore: KeyStore =

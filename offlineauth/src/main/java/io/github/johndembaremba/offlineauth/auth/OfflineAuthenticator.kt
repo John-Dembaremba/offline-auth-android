@@ -11,7 +11,7 @@ import io.github.johndembaremba.offlineauth.verification.Pbkdf2Sha256PasswordVer
  * The credential is validated first, then the password is verified using
  * the algorithm declared by the credential.
  */
-class OfflineAuthenticator(
+internal class OfflineAuthenticator(
     private val credentialValidator: CredentialValidator =
         CredentialValidator(),
     private val passwordVerifiers: Map<String, PasswordVerifier> =
