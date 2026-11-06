@@ -1,8 +1,8 @@
 package io.github.johndembaremba.offlineauth.validation
 
 import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
+import io.github.johndembaremba.offlineauth.model.LocalCredentialSyncFailureReason
 import io.github.johndembaremba.offlineauth.sync.CredentialProcessingException
-import io.github.johndembaremba.offlineauth.sync.CredentialProcessingFailureReason
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -38,7 +38,7 @@ class EnvelopeValidatorTest {
             }
 
         assertEquals(
-            CredentialProcessingFailureReason.UNSUPPORTED_KEY_ALGORITHM,
+            LocalCredentialSyncFailureReason.UNSUPPORTED_KEY_ALGORITHM,
             exception.reason,
         )
     }
@@ -59,7 +59,7 @@ class EnvelopeValidatorTest {
             }
 
         assertEquals(
-            CredentialProcessingFailureReason.UNSUPPORTED_CONTENT_ALGORITHM,
+            LocalCredentialSyncFailureReason.UNSUPPORTED_CONTENT_ALGORITHM,
             exception.reason,
         )
     }

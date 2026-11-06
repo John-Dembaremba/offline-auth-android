@@ -1,8 +1,8 @@
 package io.github.johndembaremba.offlineauth.validation
 
 import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
+import io.github.johndembaremba.offlineauth.model.LocalCredentialSyncFailureReason
 import io.github.johndembaremba.offlineauth.sync.CredentialProcessingException
-import io.github.johndembaremba.offlineauth.sync.CredentialProcessingFailureReason
 
 /**
  * Validates that an encrypted envelope uses supported algorithms.
@@ -12,7 +12,7 @@ class EnvelopeValidator {
         if (envelope.keyAlgorithm != SUPPORTED_KEY_ALGORITHM) {
             throw CredentialProcessingException(
                 reason =
-                    CredentialProcessingFailureReason
+                    LocalCredentialSyncFailureReason
                         .UNSUPPORTED_KEY_ALGORITHM,
             )
         }
@@ -20,7 +20,7 @@ class EnvelopeValidator {
         if (envelope.contentAlgorithm != SUPPORTED_CONTENT_ALGORITHM) {
             throw CredentialProcessingException(
                 reason =
-                    CredentialProcessingFailureReason
+                    LocalCredentialSyncFailureReason
                         .UNSUPPORTED_CONTENT_ALGORITHM,
             )
         }

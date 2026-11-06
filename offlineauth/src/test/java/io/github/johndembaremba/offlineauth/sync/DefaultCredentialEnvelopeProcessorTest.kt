@@ -1,8 +1,8 @@
 package io.github.johndembaremba.offlineauth.sync
 
 import io.github.johndembaremba.offlineauth.crypto.CredentialDecryptor
-import io.github.johndembaremba.offlineauth.crypto.EnvelopeDecryptor
 import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
+import io.github.johndembaremba.offlineauth.model.LocalCredentialSyncFailureReason
 import io.github.johndembaremba.offlineauth.serialization.CredentialParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -34,7 +34,7 @@ class DefaultCredentialEnvelopeProcessorTest {
             }
 
         assertEquals(
-            CredentialProcessingFailureReason.DECRYPTION_FAILED,
+            LocalCredentialSyncFailureReason.DECRYPTION_FAILED,
             exception.reason,
         )
 
@@ -71,7 +71,7 @@ class DefaultCredentialEnvelopeProcessorTest {
             }
 
         assertEquals(
-            CredentialProcessingFailureReason.INVALID_CREDENTIAL_PAYLOAD,
+            LocalCredentialSyncFailureReason.INVALID_CREDENTIAL_PAYLOAD,
             exception.reason,
         )
 
@@ -112,7 +112,7 @@ class DefaultCredentialEnvelopeProcessorTest {
             }
 
         assertEquals(
-            CredentialProcessingFailureReason.CREDENTIAL_VALIDATION_FAILED,
+            LocalCredentialSyncFailureReason.CREDENTIAL_VALIDATION_FAILED,
             exception.reason,
         )
 
@@ -153,7 +153,7 @@ class DefaultCredentialEnvelopeProcessorTest {
             }
 
         assertEquals(
-            CredentialProcessingFailureReason.UNSUPPORTED_PASSWORD_ALGORITHM,
+            LocalCredentialSyncFailureReason.UNSUPPORTED_PASSWORD_ALGORITHM,
             exception.reason,
         )
 

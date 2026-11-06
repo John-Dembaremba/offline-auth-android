@@ -3,11 +3,12 @@ package io.github.johndembaremba.offlineauth
 import io.github.johndembaremba.offlineauth.auth.OfflineAuthenticator
 import io.github.johndembaremba.offlineauth.crypto.PublicKeyProvider
 import io.github.johndembaremba.offlineauth.model.CredentialFailurePayload
+import io.github.johndembaremba.offlineauth.model.CredentialSyncFailureReason
+import io.github.johndembaremba.offlineauth.model.CredentialSyncResult
 import io.github.johndembaremba.offlineauth.model.OfflineCredential
 import io.github.johndembaremba.offlineauth.model.OfflineCredentialSnapshot
 import io.github.johndembaremba.offlineauth.storage.CredentialStore
 import io.github.johndembaremba.offlineauth.sync.CredentialSyncProcessor
-import io.github.johndembaremba.offlineauth.sync.CredentialSyncResult
 import io.github.johndembaremba.offlineauth.sync.UnsupportedProtocolVersionException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -130,7 +131,9 @@ class OfflineAuthManagerTest {
             )
 
             assertEquals(
-                "unusable_password",
+                CredentialSyncFailureReason.Backend(
+                    reason = "unusable_password",
+                ),
                 result.failures.first().reason,
             )
         }

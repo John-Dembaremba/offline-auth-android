@@ -2,6 +2,7 @@ package io.github.johndembaremba.offlineauth.sync
 
 import io.github.johndembaremba.offlineauth.crypto.CredentialDecryptor
 import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
+import io.github.johndembaremba.offlineauth.model.LocalCredentialSyncFailureReason
 import io.github.johndembaremba.offlineauth.model.OfflineCredential
 import io.github.johndembaremba.offlineauth.serialization.CredentialParser
 import io.github.johndembaremba.offlineauth.validation.CredentialValidator
@@ -31,7 +32,7 @@ class DefaultCredentialEnvelopeProcessor(
             } catch (exception: Exception) {
                 throw CredentialProcessingException(
                     reason =
-                        CredentialProcessingFailureReason
+                        LocalCredentialSyncFailureReason
                             .DECRYPTION_FAILED,
                     cause = exception,
                 )
@@ -45,7 +46,7 @@ class DefaultCredentialEnvelopeProcessor(
             } catch (exception: Exception) {
                 throw CredentialProcessingException(
                     reason =
-                        CredentialProcessingFailureReason
+                        LocalCredentialSyncFailureReason
                             .INVALID_CREDENTIAL_PAYLOAD,
                     cause = exception,
                 )
@@ -54,7 +55,7 @@ class DefaultCredentialEnvelopeProcessor(
         if (!credentialValidator.isValid(credential)) {
             throw CredentialProcessingException(
                 reason =
-                    CredentialProcessingFailureReason
+                    LocalCredentialSyncFailureReason
                         .CREDENTIAL_VALIDATION_FAILED,
             )
         }
@@ -62,7 +63,7 @@ class DefaultCredentialEnvelopeProcessor(
         if (credential.passwordAlgorithm != SUPPORTED_PASSWORD_ALGORITHM) {
             throw CredentialProcessingException(
                 reason =
-                    CredentialProcessingFailureReason
+                    LocalCredentialSyncFailureReason
                         .UNSUPPORTED_PASSWORD_ALGORITHM,
             )
         }

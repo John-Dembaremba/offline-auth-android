@@ -5,14 +5,15 @@ import io.github.johndembaremba.offlineauth.auth.OfflineAuthenticator
 import io.github.johndembaremba.offlineauth.crypto.EnvelopeDecryptor
 import io.github.johndembaremba.offlineauth.crypto.KeyStoreManager
 import io.github.johndembaremba.offlineauth.crypto.PublicKeyProvider
+import io.github.johndembaremba.offlineauth.model.CredentialSyncFailure
+import io.github.johndembaremba.offlineauth.model.CredentialSyncFailureReason
+import io.github.johndembaremba.offlineauth.model.CredentialSyncResult
 import io.github.johndembaremba.offlineauth.model.OfflineCredentialSnapshot
 import io.github.johndembaremba.offlineauth.serialization.CredentialParser
 import io.github.johndembaremba.offlineauth.storage.CredentialStore
 import io.github.johndembaremba.offlineauth.storage.EncryptedCredentialStore
 import io.github.johndembaremba.offlineauth.sync.AdaptiveParallelismStrategy
-import io.github.johndembaremba.offlineauth.sync.CredentialSyncFailure
 import io.github.johndembaremba.offlineauth.sync.CredentialSyncProcessor
-import io.github.johndembaremba.offlineauth.sync.CredentialSyncResult
 import io.github.johndembaremba.offlineauth.sync.DefaultCredentialEnvelopeProcessor
 import io.github.johndembaremba.offlineauth.sync.OfflineCredentialSyncProcessor
 import io.github.johndembaremba.offlineauth.sync.SynchronizedCredential
@@ -28,14 +29,6 @@ class OfflineAuthManager internal constructor(
     private val syncProcessor: CredentialSyncProcessor,
 ) {
     fun getPublicKey(): String = publicKeyProvider.getPublicKey()
-
-    private fun validateProtocolVersion(protocolVersion: Int) {
-        if (protocolVersion != SUPPORTED_PROTOCOL_VERSION) {
-            throw UnsupportedProtocolVersionException(
-                protocolVersion = protocolVersion,
-            )
-        }
-    }
 
     suspend fun sync(snapshot: OfflineCredentialSnapshot): CredentialSyncResult {
         validateProtocolVersion(
@@ -71,7 +64,10 @@ class OfflineAuthManager internal constructor(
             snapshot.failures.map { failure ->
                 CredentialSyncFailure(
                     username = failure.username,
-                    reason = failure.reason,
+                    reason =
+                        CredentialSyncFailureReason.Backend(
+                            reason = failure.reason,
+                        ),
                 )
             }
 
@@ -96,6 +92,14 @@ class OfflineAuthManager internal constructor(
             password = password,
             credential = credential,
         )
+    }
+
+    private fun validateProtocolVersion(protocolVersion: Int) {
+        if (protocolVersion != SUPPORTED_PROTOCOL_VERSION) {
+            throw UnsupportedProtocolVersionException(
+                protocolVersion = protocolVersion,
+            )
+        }
     }
 
     companion object {

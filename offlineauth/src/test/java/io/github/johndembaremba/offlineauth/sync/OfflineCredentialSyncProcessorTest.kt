@@ -1,6 +1,8 @@
 package io.github.johndembaremba.offlineauth.sync
 
+import io.github.johndembaremba.offlineauth.model.CredentialSyncFailureReason
 import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
+import io.github.johndembaremba.offlineauth.model.LocalCredentialSyncFailureReason
 import io.github.johndembaremba.offlineauth.model.OfflineCredential
 import io.github.johndembaremba.offlineauth.storage.CredentialStore
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +15,8 @@ class OfflineCredentialSyncProcessorTest {
     @Test
     fun process_returnsSuccessfulAndFailedUsernames() =
         runBlocking {
-            val store = FakeCredentialStore()
+            val store =
+                FakeCredentialStore()
 
             val envelopeProcessor =
                 CredentialEnvelopeProcessor { envelope ->
@@ -27,7 +30,7 @@ class OfflineCredentialSyncProcessorTest {
                         "bob" -> {
                             throw CredentialProcessingException(
                                 reason =
-                                    CredentialProcessingFailureReason
+                                    LocalCredentialSyncFailureReason
                                         .DECRYPTION_FAILED,
                             )
                         }
@@ -83,7 +86,11 @@ class OfflineCredentialSyncProcessorTest {
             )
 
             assertEquals(
-                "decryption_failed",
+                CredentialSyncFailureReason.Local(
+                    reason =
+                        LocalCredentialSyncFailureReason
+                            .DECRYPTION_FAILED,
+                ),
                 result.failures.first().reason,
             )
         }
@@ -91,7 +98,8 @@ class OfflineCredentialSyncProcessorTest {
     @Test
     fun process_preservesFailedUsersExistingCredential() =
         runBlocking {
-            val store = FakeCredentialStore()
+            val store =
+                FakeCredentialStore()
 
             val oldBobCredential =
                 credential(
@@ -143,7 +151,8 @@ class OfflineCredentialSyncProcessorTest {
     @Test
     fun process_removesUserMissingFromSnapshot() =
         runBlocking {
-            val store = FakeCredentialStore()
+            val store =
+                FakeCredentialStore()
 
             store.save(
                 username = "charlie",
@@ -224,7 +233,11 @@ class OfflineCredentialSyncProcessorTest {
             )
 
             assertEquals(
-                "credential_processing_failed",
+                CredentialSyncFailureReason.Local(
+                    reason =
+                        LocalCredentialSyncFailureReason
+                            .PROCESSING_FAILED,
+                ),
                 result.failures.first().reason,
             )
         }
@@ -292,7 +305,11 @@ class OfflineCredentialSyncProcessorTest {
             )
 
             assertEquals(
-                "credential_version_rollback",
+                CredentialSyncFailureReason.Local(
+                    reason =
+                        LocalCredentialSyncFailureReason
+                            .CREDENTIAL_VERSION_ROLLBACK,
+                ),
                 failure.reason,
             )
 
