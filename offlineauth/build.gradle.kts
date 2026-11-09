@@ -31,7 +31,7 @@ dependencies {
         "com.android.tools:desugar_jdk_libs:2.1.5",
     )
 
-    implementation(
+    api(
         "org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0",
     )
 

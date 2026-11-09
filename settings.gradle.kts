@@ -20,3 +20,4 @@ dependencyResolutionManagement {
 rootProject.name = "offline-auth-android"
 
 include(":offlineauth")
+include(":sample-app")
