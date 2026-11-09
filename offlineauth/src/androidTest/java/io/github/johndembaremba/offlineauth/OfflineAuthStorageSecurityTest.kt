@@ -9,6 +9,7 @@ import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
 import io.github.johndembaremba.offlineauth.model.OfflineCredentialSnapshot
 import io.github.johndembaremba.offlineauth.model.SynchronizedCredentialPayload
 import io.github.johndembaremba.offlineauth.sync.UnsupportedProtocolVersionException
+import io.github.johndembaremba.offlineauth.testing.Pbkdf2TestHelper
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -29,10 +30,8 @@ import java.security.spec.X509EncodedKeySpec
 import java.time.Instant
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
-import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.OAEPParameterSpec
-import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.PSource
 
 @RunWith(AndroidJUnit4::class)
@@ -370,37 +369,12 @@ class OfflineAuthStorageSecurityTest {
     private fun createPasswordVerifier(
         password: String,
         salt: String,
-    ): String {
-        val specification =
-            PBEKeySpec(
-                password.toCharArray(),
-                salt.toByteArray(),
-                PBKDF2_ITERATIONS,
-                PBKDF2_KEY_LENGTH_BITS,
-            )
-
-        return try {
-            val factory =
-                SecretKeyFactory.getInstance(
-                    "PBKDF2WithHmacSHA256",
-                )
-
-            val encodedHash =
-                Base64.encodeToString(
-                    factory
-                        .generateSecret(specification)
-                        .encoded,
-                    Base64.NO_WRAP,
-                )
-
-            "pbkdf2_sha256" +
-                "${'$'}$PBKDF2_ITERATIONS" +
-                "${'$'}$salt" +
-                "${'$'}$encodedHash"
-        } finally {
-            specification.clearPassword()
-        }
-    }
+    ): String =
+        Pbkdf2TestHelper.createVerifier(
+            password = password,
+            salt = salt,
+            iterations = PBKDF2_ITERATIONS,
+        )
 
     private fun decodePublicKey(encodedPublicKey: String): PublicKey {
         val decoded =
@@ -410,8 +384,9 @@ class OfflineAuthStorageSecurityTest {
             )
 
         return KeyFactory
-            .getInstance("RSA")
-            .generatePublic(
+            .getInstance(
+                "RSA",
+            ).generatePublic(
                 X509EncodedKeySpec(
                     decoded,
                 ),
@@ -424,16 +399,21 @@ class OfflineAuthStorageSecurityTest {
     ): EncryptedEnvelope {
         val aesKey =
             KeyGenerator
-                .getInstance("AES")
-                .apply {
-                    init(AES_KEY_SIZE_BITS)
+                .getInstance(
+                    "AES",
+                ).apply {
+                    init(
+                        AES_KEY_SIZE_BITS,
+                    )
                 }.generateKey()
 
         val nonce =
             ByteArray(
                 GCM_NONCE_SIZE_BYTES,
             ).also {
-                SecureRandom().nextBytes(it)
+                SecureRandom().nextBytes(
+                    it,
+                )
             }
 
         val contentCipher =
@@ -575,9 +555,6 @@ class OfflineAuthStorageSecurityTest {
 
         private const val PBKDF2_ITERATIONS =
             100_000
-
-        private const val PBKDF2_KEY_LENGTH_BITS =
-            256
 
         private const val MAX_SCANNED_FILE_BYTES =
             5L * 1024L * 1024L

@@ -2,35 +2,30 @@
 
 This document records observed performance characteristics of `offline-auth-android`.
 
-The results in this document are measurements from the project test environment. They are intended to provide a baseline for development and regression testing rather than guaranteed performance figures for every Android device.
+These results are development and regression baselines, not guaranteed performance figures for every Android device.
 
-## Test Environment
+## Benchmark Environment
 
-The primary benchmark environment used:
+Primary performance measurements were collected on:
 
-- Android emulator
-- Android API 37
+- Android API 37 emulator
 - x86_64 system image
-- KVM hardware acceleration
+- KVM acceleration
 - 4 available processors
 - Linux host
-- Android Keystore enabled
-- AES-256-GCM credential encryption
-- RSA-OAEP-SHA256 key wrapping
-- PBKDF2-SHA256 password verification
-- Adaptive credential processing parallelism with a maximum of 4 workers
+- Android Keystore
+- AES-256-GCM
+- RSA-OAEP-SHA256
+- PBKDF2-SHA256
+- adaptive parallelism capped at 4 workers
 
-Performance tests measure the Android-side credential synchronization operation.
-
-Where possible, backend-style test data generation and envelope construction are performed outside the timed synchronization section.
+Backend-style fixture generation and encrypted-envelope construction are performed outside the timed synchronization section where possible.
 
 ## Synchronization Performance
 
-The repeated synchronization benchmark executes each workload five times.
+Each workload was executed five times.
 
-The following measurements were observed during the dedicated benchmark run.
-
-| Credentials | Average | Median | Minimum | Maximum | Average per credential |
+| Credentials | Average | Median | Minimum | Maximum | Avg / credential |
 |---:|---:|---:|---:|---:|---:|
 | 1 | 19.783 ms | 19.652 ms | 11.684 ms | 27.070 ms | 19.783 ms |
 | 10 | 91.038 ms | 95.535 ms | 70.122 ms | 97.983 ms | 9.104 ms |
@@ -39,260 +34,246 @@ The following measurements were observed during the dedicated benchmark run.
 | 500 | 3632.967 ms | 3115.496 ms | 3023.136 ms | 5375.898 ms | 7.266 ms |
 | 1000 | 6168.505 ms | 6266.432 ms | 5175.199 ms | 7129.778 ms | 6.169 ms |
 
-All credentials in these benchmark workloads synchronized successfully.
+All credentials synchronized successfully.
 
-### Interpretation
+Observed API 37 behavior:
 
-The results show approximately linear scaling for larger snapshots.
+- 100 credentials: under 1 second
+- 500 credentials: about 3–4 seconds
+- 1000 credentials: about 6 seconds
+- scaling is approximately linear for larger snapshots
 
-For the tested environment:
-
-- 100 credentials typically synchronized in under one second.
-- 500 credentials typically synchronized in approximately 3–4 seconds.
-- 1000 credentials typically synchronized in approximately 6 seconds.
-- Per-credential processing cost decreased as batch size increased.
-
-These figures should not be interpreted as hard service-level guarantees. Performance varies depending on CPU speed, Android version, Keystore implementation, system load, storage performance, thermal conditions, and device architecture.
+Performance will vary by CPU, Android version, device architecture, Keystore implementation, storage, and system load.
 
 ## Parallelism
 
-The library uses bounded parallel credential processing.
-
-Parallelism levels of 1, 2, and 4 were benchmarked using workloads of 100, 500, and 1000 credentials.
+Fixed parallelism levels of 1, 2, and 4 were benchmarked.
 
 ### 100 credentials
 
-| Parallelism | Average | Median | Average per credential |
-|---:|---:|---:|---:|
-| 1 | 1601.653 ms | 1021.768 ms | 16.017 ms |
-| 2 | 752.847 ms | 793.206 ms | 7.528 ms |
-| 4 | 660.016 ms | 718.567 ms | 6.600 ms |
+| Parallelism | Average | Median |
+|---:|---:|---:|
+| 1 | 1601.653 ms | 1021.768 ms |
+| 2 | 752.847 ms | 793.206 ms |
+| 4 | 660.016 ms | 718.567 ms |
 
 ### 500 credentials
 
-| Parallelism | Average | Median | Average per credential |
-|---:|---:|---:|---:|
-| 1 | 4524.926 ms | 4446.503 ms | 9.050 ms |
-| 2 | 3519.362 ms | 3679.938 ms | 7.039 ms |
-| 4 | 3238.314 ms | 3336.075 ms | 6.477 ms |
+| Parallelism | Average | Median |
+|---:|---:|---:|
+| 1 | 4524.926 ms | 4446.503 ms |
+| 2 | 3519.362 ms | 3679.938 ms |
+| 4 | 3238.314 ms | 3336.075 ms |
 
 ### 1000 credentials
 
-| Parallelism | Average | Median | Average per credential |
-|---:|---:|---:|---:|
-| 1 | 8511.269 ms | 8929.665 ms | 8.511 ms |
-| 2 | 8682.037 ms | 7345.377 ms | 8.682 ms |
-| 4 | 6808.043 ms | 6700.003 ms | 6.808 ms |
+| Parallelism | Average | Median |
+|---:|---:|---:|
+| 1 | 8511.269 ms | 8929.665 ms |
+| 2 | 8682.037 ms | 7345.377 ms |
+| 4 | 6808.043 ms | 6700.003 ms |
 
-Parallelism level `4` produced the lowest median synchronization time for all tested workload sizes.
+Parallelism `4` produced the lowest median time at every tested workload size.
 
-Compared with serial execution, the median improvement was approximately:
+The current adaptive strategy remains:
 
-- 30% for 100 credentials
-- 25% for 500 credentials
-- 25% for 1000 credentials
-
-The current adaptive strategy therefore remains capped at four workers.
-
-Increasing concurrency beyond four has not been demonstrated to improve performance and could increase contention, memory pressure, or Android Keystore overhead.
+```text
+< 10 credentials   → 1 worker
+< 20 credentials   → 2 workers
+20+ credentials    → up to 4 workers
+maximum            → 4 workers
+```
 
 ## Memory Behaviour
 
-Memory measurements use Android process PSS and include garbage collection checkpoints around synchronization.
+Android process PSS was measured around synchronization.
 
-### 100 credentials
+| Credentials | Before sync | After sync | After GC | Retained delta |
+|---:|---:|---:|---:|---:|
+| 100 | 30.23 MB | 31.65 MB | 31.40 MB | 1.17 MB |
+| 500 | 31.66 MB | 33.24 MB | 32.47 MB | 0.81 MB |
+| 1000 | 32.49 MB | 34.18 MB | 34.02 MB | 1.53 MB |
 
-- Baseline: 31.20 MB
-- Before synchronization: 30.23 MB
-- After synchronization: 31.65 MB
-- After GC: 31.40 MB
-- Synchronization delta: 1.42 MB
-- Retained delta: 1.17 MB
+Temporary memory growth remained below approximately 2 MB for workloads up to 1000 credentials.
 
-### 500 credentials
+No obvious unbounded memory growth was observed.
 
-- Baseline: 31.17 MB
-- Before synchronization: 31.66 MB
-- After synchronization: 33.24 MB
-- After GC: 32.47 MB
-- Synchronization delta: 1.58 MB
-- Retained delta: 0.81 MB
+## Stress Testing
 
-### 1000 credentials
+Repeated synchronization workloads:
 
-- Baseline: 31.59 MB
-- Before synchronization: 32.49 MB
-- After synchronization: 34.18 MB
-- After GC: 34.02 MB
-- Synchronization delta: 1.69 MB
-- Retained delta: 1.53 MB
-
-The temporary memory increase remained below approximately 2 MB for snapshots containing up to 1000 credentials in this environment.
-
-These measurements do not prove the absence of all possible memory leaks. They show that no obvious unbounded memory growth was observed during the measured synchronization workloads.
-
-## Stress and Soak Testing
-
-Repeated synchronization testing was performed using the following workloads:
-
-| Credentials | Cycles | Credential sync operations |
+| Credentials | Cycles | Sync operations |
 |---:|---:|---:|
 | 100 | 100 | 10,000 |
 | 500 | 50 | 25,000 |
 | 1000 | 25 | 25,000 |
 
-Total credential synchronization operations:
+Total:
 
-**60,000**
+**60,000 credential synchronization operations**
 
-### 100 credentials × 100 cycles
+Observed averages:
 
-- Average sync: 639.549 ms
-- Minimum: 417.116 ms
-- Maximum: 1057.418 ms
-- Baseline memory: 30.380 MB
-- Peak memory: 32.140 MB
-- Final memory: 28.739 MB
-- Retained delta: -1.641 MB
+| Credentials | Average sync | Peak memory | Retained delta |
+|---:|---:|---:|---:|
+| 100 | 639.549 ms | 32.140 MB | -1.641 MB |
+| 500 | 3355.544 ms | 32.638 MB | 1.363 MB |
+| 1000 | 6490.808 ms | 37.091 MB | 1.848 MB |
 
-### 500 credentials × 50 cycles
+No correctness failures, crashes, or obvious unbounded memory accumulation were observed.
 
-- Average sync: 3355.544 ms
-- Minimum: 2111.388 ms
-- Maximum: 5353.536 ms
-- Baseline memory: 29.067 MB
-- Peak memory: 32.638 MB
-- Final memory: 30.431 MB
-- Retained delta: 1.363 MB
+## Mixed-Failure Workload
 
-### 1000 credentials × 25 cycles
+A 1000-user snapshot was tested with:
 
-- Average sync: 6490.808 ms
-- Minimum: 5188.696 ms
-- Maximum: 8322.732 ms
-- Baseline memory: 30.079 MB
-- Peak memory: 37.091 MB
-- Final memory: 31.927 MB
-- Retained delta: 1.848 MB
-
-No correctness failures, crashes, or obvious unbounded memory accumulation were observed during these workloads.
-
-## Mixed-Failure Performance
-
-A 1000-user authoritative snapshot was tested with deliberately mixed results:
-
-- 900 valid credentials
-- 50 backend-reported failures
-- 30 corrupted encrypted credentials
-- 20 credential-version rollback attempts
+```text
+900 valid credentials
+50 backend failures
+30 corrupted encrypted credentials
+20 rollback attempts
+```
 
 Observed result:
 
-- 900 successful synchronizations
-- 50 backend failures
-- 30 decryption failures
-- 20 rollback failures
-- 100 total failures
-- approximately 3.9–4.3 seconds synchronization time during observed runs
+```text
+900 successful
+50 backend failures
+30 decryption failures
+20 rollback failures
+100 total failures
+```
 
-The library continued processing valid credentials while preserving correct failure semantics.
+Synchronization completed in approximately **3.9–4.3 seconds** during observed API 37 runs.
+
+Valid credentials continued processing correctly while failure semantics were preserved.
 
 ## Full-Suite Performance
 
-Performance figures collected while the entire instrumentation suite is running can be noticeably slower and more variable than isolated benchmark results.
+Full instrumentation runs are slower and more variable than isolated benchmarks.
 
-For example, during a full instrumentation run, the 1000-user benchmark reported:
+One full API 37 run reported for 1000 credentials:
 
-- Average: 8286.436 ms
-- Median: 8559.746 ms
-- Minimum: 6810.276 ms
-- Maximum: 10276.360 ms
+```text
+Average: 8286.436 ms
+Median: 8559.746 ms
+Minimum: 6810.276 ms
+Maximum: 10276.360 ms
+```
 
-All 1000 credentials still synchronized successfully in every run.
-
-This difference is expected because the emulator has already performed memory tests, cryptographic work, parallelism benchmarks, and other instrumentation before the benchmark executes.
-
-For this reason:
-
-**Dedicated benchmark runs should be used for performance comparisons.**
+Dedicated benchmark runs should therefore be used for performance comparisons.
 
 The full instrumentation suite should primarily be treated as correctness and release-gate evidence.
 
-## Recommended Parallelism
+## Android Compatibility
 
-The current adaptive strategy is:
+The current compatibility matrix is:
 
-- fewer than 10 credentials: 1 worker
-- fewer than 20 credentials: 2 workers
-- 20 or more credentials: up to 4 workers
-- always limited by available processors
-- maximum parallelism: 4
+| Android version | API | Status | Notes |
+|---|---:|---|---|
+| Android 6.0 | 23 | ✅ Passed | PBKDF2-HMAC-SHA256 fallback validated |
+| Android 9 | 28 | ✅ Passed | Native PBKDF2 path validated |
+| Android 13 | 33 | ✅ Passed | Standard compatibility suite validated |
+| Android 17 test image | 37 | ✅ Passed | Primary benchmark environment |
 
-Current test results support keeping this strategy.
+Production PBKDF2 behavior:
+
+```text
+API 23–25
+    PBKDF2-HMAC-SHA256 using HmacSHA256
+
+API 26+
+    SecretKeyFactory("PBKDF2WithHmacSHA256")
+```
+
+Both implementations preserve the Django-compatible PBKDF2-SHA256 verifier format.
+
+The standard compatibility suite completed in approximately:
+
+```text
+API 23   36 seconds
+API 28   22 seconds
+API 33   33 seconds
+```
+
+These timings are test-suite timings, not synchronization benchmarks.
+
+API 23 also completed the full performance/stress instrumentation suite successfully.
 
 ## Running Performance Tests
 
-Run the standard synchronization benchmark:
+Standard compatibility suite:
+
+```bash
+make android-test
+```
+
+Dedicated benchmarks:
 
 ```bash
 make android-performance-test
-```
-
-Run the parallelism benchmark:
-
-```bash
 make android-parallelism-test
-```
-
-Run memory measurements:
-
-```bash
 make android-memory-test
-```
-
-Run the repeated soak test:
-
-```bash
 make android-stress-test
-```
-
-Run the mixed-failure workload:
-
-```bash
 make android-mixed-failure-test
 ```
 
-Run all instrumentation tests, including the expensive benchmark suites:
+Run all heavy tests:
+
+```bash
+make android-heavy-test
+```
+
+Run every instrumentation test:
 
 ```bash
 make android-full-test
 ```
 
+## Known Android Test Tooling Warning
+
+API 23 connected tests may report:
+
+```text
+Failed to retrieve additional test outputs from device.
+java.io.IOException: File name too long
+```
+
+The warning originates from Android tooling's `AndroidAdditionalTestOutputCollector`.
+
+Observed runs still finish with:
+
+```text
+BUILD SUCCESSFUL
+```
+
+so it is currently treated as a test-output collection issue rather than a library correctness failure.
+
 ## Benchmark Guidance
 
-When comparing performance between versions:
+For meaningful comparisons:
 
-1. Use the same emulator or physical device.
-2. Use the same Android API level.
-3. Keep processor and memory configuration unchanged.
-4. Run benchmarks separately from the full instrumentation suite.
-5. Prefer medians over individual runs.
-6. Compare multiple runs rather than a single measurement.
-7. Record changes to cryptography, storage, parallelism, or Android Keystore usage.
+1. use the same device or emulator
+2. use the same API level
+3. keep CPU and memory configuration unchanged
+4. use the same system image architecture
+5. run benchmarks separately from the full suite
+6. compare multiple runs and prefer medians
+7. keep host load as consistent as possible
+8. record cryptography, storage, parallelism, or Keystore changes
 
-A performance regression should be investigated when a repeatable change is observed under comparable conditions.
+A regression should be investigated when it is repeatable under comparable conditions.
 
-## Current Performance Conclusion
-
-Under the tested 4-core Android emulator environment, the library comfortably handles snapshots containing up to 1000 offline credentials.
+## Conclusion
 
 The current implementation demonstrates:
 
-- bounded parallel processing
 - approximately linear synchronization scaling
+- bounded parallel processing
 - low temporary memory growth
-- stable repeated synchronization
-- correct partial-failure handling
-- successful processing of large authoritative snapshots
+- successful 60,000-operation soak testing
+- correct mixed-failure handling
+- successful synchronization of snapshots up to 1000 credentials
+- compatibility across API 23, 28, 33, and 37
+- Django-compatible PBKDF2 verification across old and new Android implementations
 
-These results establish a baseline for future releases rather than an absolute performance guarantee.
+These results establish a development baseline rather than an absolute performance guarantee.

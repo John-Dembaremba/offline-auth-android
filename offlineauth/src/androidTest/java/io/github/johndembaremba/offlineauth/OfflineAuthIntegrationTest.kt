@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.johndembaremba.offlineauth.model.EncryptedEnvelope
 import io.github.johndembaremba.offlineauth.serialization.SnapshotParser
+import io.github.johndembaremba.offlineauth.testing.Pbkdf2TestHelper
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -19,10 +20,8 @@ import java.security.spec.X509EncodedKeySpec
 import java.time.Instant
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
-import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.OAEPParameterSpec
-import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.PSource
 
 @RunWith(AndroidJUnit4::class)
@@ -41,10 +40,14 @@ class OfflineAuthIntegrationTest {
                     manager.getPublicKey(),
                 )
 
-            val username = "integration-user"
-            val password = "correct-password"
+            val username =
+                "integration-user"
 
-            val now = Instant.now()
+            val password =
+                "correct-password"
+
+            val now =
+                Instant.now()
 
             val credentialJson =
                 createCredentialJson(
@@ -120,39 +123,12 @@ class OfflineAuthIntegrationTest {
             """.trimIndent()
     }
 
-    private fun createPasswordVerifier(password: String): String {
-        val salt = "integration-test-salt"
-
-        val passwordSpec =
-            PBEKeySpec(
-                password.toCharArray(),
-                salt.toByteArray(),
-                PBKDF2_ITERATIONS,
-                PBKDF2_KEY_LENGTH_BITS,
-            )
-
-        return try {
-            val secretKeyFactory =
-                SecretKeyFactory.getInstance(
-                    "PBKDF2WithHmacSHA256",
-                )
-
-            val encodedHash =
-                Base64.encodeToString(
-                    secretKeyFactory
-                        .generateSecret(passwordSpec)
-                        .encoded,
-                    Base64.NO_WRAP,
-                )
-
-            "pbkdf2_sha256" +
-                "${'$'}$PBKDF2_ITERATIONS" +
-                "${'$'}$salt" +
-                "${'$'}$encodedHash"
-        } finally {
-            passwordSpec.clearPassword()
-        }
-    }
+    private fun createPasswordVerifier(password: String): String =
+        Pbkdf2TestHelper.createVerifier(
+            password = password,
+            salt = "integration-test-salt",
+            iterations = PBKDF2_ITERATIONS,
+        )
 
     private fun decodePublicKey(encodedPublicKey: String): PublicKey {
         val decodedKey =
@@ -162,8 +138,9 @@ class OfflineAuthIntegrationTest {
             )
 
         return KeyFactory
-            .getInstance("RSA")
-            .generatePublic(
+            .getInstance(
+                "RSA",
+            ).generatePublic(
                 X509EncodedKeySpec(
                     decodedKey,
                 ),
@@ -176,16 +153,21 @@ class OfflineAuthIntegrationTest {
     ): EncryptedEnvelope {
         val aesKey =
             KeyGenerator
-                .getInstance("AES")
-                .apply {
-                    init(AES_KEY_SIZE_BITS)
+                .getInstance(
+                    "AES",
+                ).apply {
+                    init(
+                        AES_KEY_SIZE_BITS,
+                    )
                 }.generateKey()
 
         val nonce =
             ByteArray(
                 GCM_NONCE_SIZE_BYTES,
             ).also {
-                SecureRandom().nextBytes(it)
+                SecureRandom().nextBytes(
+                    it,
+                )
             }
 
         val contentCipher =
@@ -274,11 +256,16 @@ class OfflineAuthIntegrationTest {
         """.trimIndent()
 
     companion object {
-        private const val AES_KEY_SIZE_BITS = 256
-        private const val GCM_NONCE_SIZE_BYTES = 12
-        private const val GCM_TAG_SIZE_BITS = 128
+        private const val AES_KEY_SIZE_BITS =
+            256
 
-        private const val PBKDF2_ITERATIONS = 100_000
-        private const val PBKDF2_KEY_LENGTH_BITS = 256
+        private const val GCM_NONCE_SIZE_BYTES =
+            12
+
+        private const val GCM_TAG_SIZE_BITS =
+            128
+
+        private const val PBKDF2_ITERATIONS =
+            100_000
     }
 }
