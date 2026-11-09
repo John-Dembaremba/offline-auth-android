@@ -1,7 +1,12 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("maven-publish")
+    id("signing")
 }
+
+group = "io.github.john-dembaremba"
+version = "0.1.0"
 
 android {
     namespace = "io.github.johndembaremba.offlineauth"
@@ -23,6 +28,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
 
         isCoreLibraryDesugaringEnabled = true
+    }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
     }
 }
 
@@ -49,5 +61,68 @@ dependencies {
 
     androidTestImplementation(
         "androidx.test:runner:1.7.0",
+    )
+}
+
+publishing {
+    publications {
+        register<MavenPublication>("release") {
+            group = "io.github.john-dembaremba"
+            artifactId = "offline-auth-android"
+            version = project.version.toString()
+
+            afterEvaluate {
+                from(components["release"])
+            }
+
+            pom {
+                name.set("Offline Auth Android")
+
+                description.set(
+                    "Secure offline authentication for Android with Android Keystore, encrypted credential storage, and Django-compatible PBKDF2 verification.",
+                )
+
+                url.set(
+                    "https://github.com/John-dembaremba/offline-auth-android",
+                )
+
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/license/mit")
+                        distribution.set("repo")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("john-dembaremba")
+                        name.set("John Dembaremba")
+                    }
+                }
+
+                scm {
+                    connection.set(
+                        "scm:git:https://github.com/John-dembaremba/offline-auth-android.git",
+                    )
+
+                    developerConnection.set(
+                        "scm:git:ssh://git@github.com/John-dembaremba/offline-auth-android.git",
+                    )
+
+                    url.set(
+                        "https://github.com/John-dembaremba/offline-auth-android",
+                    )
+                }
+            }
+        }
+    }
+}
+
+signing {
+    useGpgCmd()
+
+    sign(
+        publishing.publications["release"],
     )
 }
