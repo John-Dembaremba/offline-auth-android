@@ -7,16 +7,20 @@ This document describes how to prepare, validate, sign, and publish `offline-aut
 ```text
 groupId:    io.github.john-dembaremba
 artifactId: offline-auth-android
-version:    0.1.0
+version:    <release-version>
 ```
 
-The Maven Central namespace is:
+Current published release:
+
+```text
+io.github.john-dembaremba:offline-auth-android:0.1.0
+```
+
+The verified Maven Central namespace is:
 
 ```text
 io.github.john-dembaremba
 ```
-
-It is verified through the GitHub account associated with the Central Portal.
 
 The Android/Kotlin package namespace remains:
 
@@ -36,7 +40,7 @@ android.useAndroidX=true
 kotlin.code.style=official
 ```
 
-User-specific Gradle configuration is stored outside the repository:
+Signing configuration is stored outside the repository in:
 
 ```text
 ~/.gradle/gradle.properties
@@ -48,40 +52,35 @@ Example:
 signing.gnupg.keyName=54E3ABA77FA1****
 ```
 
-Do not commit signing credentials, Maven Central credentials, private keys, or passphrases.
+Never commit:
 
-## GPG Signing Key
+- private keys
+- signing passphrases
+- Maven Central tokens
+- publishing credentials
 
-Current signing key:
+## GPG Signing
 
-```text
-Key ID:
-54E3ABA77FA1****
-
-Fingerprint:
-3344CF7326485CDE29C236DC54E3ABA77FA1****
-```
-
-List the local key:
+List the local signing key:
 
 ```bash
 gpg --list-secret-keys --keyid-format LONG
 ```
 
-Verify that the public key is available from the keyserver:
+Verify that its public key is discoverable:
 
 ```bash
 gpg --keyserver keyserver.ubuntu.com \
   --search-keys 54E3ABA77FA1****
 ```
 
-The public key must remain discoverable so Maven Central can verify artifact signatures.
+The public key must remain available so Maven Central can verify artifact signatures.
 
-Never publish or commit the private key.
+Never publish the private key.
 
 ## Pre-Release Validation
 
-Before publishing, run:
+Run:
 
 ```bash
 make format
@@ -102,21 +101,21 @@ Build the consumer sample:
 ./gradlew :sample-app:assembleDebug
 ```
 
-For final release validation:
+For final release qualification:
 
 ```bash
 make android-full-test
 ```
 
-## Generate Maven Artifacts Locally
+## Publish to Maven Local
 
-Publish the release to the local Maven repository:
+Generate the release artifacts locally:
 
 ```bash
 ./gradlew :offlineauth:publishReleasePublicationToMavenLocal
 ```
 
-Artifacts are generated under:
+Artifacts are written to:
 
 ```text
 ~/.m2/repository/io/github/john-dembaremba/offline-auth-android/<version>/
@@ -141,7 +140,7 @@ offline-auth-android-<version>.module
 offline-auth-android-<version>.module.asc
 ```
 
-## Verify the Generated POM
+## Verify the POM
 
 Inspect:
 
@@ -154,16 +153,14 @@ Confirm:
 ```text
 groupId     io.github.john-dembaremba
 artifactId  offline-auth-android
-version     expected release version
+version     expected version
 packaging   aar
-license     MIT
+license     MIT License
 developer   John Dembaremba
 SCM         correct GitHub repository
 ```
 
-Also verify dependency scopes.
-
-Current expected dependencies:
+Expected dependency scopes:
 
 ```text
 kotlinx-serialization-json   compile
@@ -171,7 +168,7 @@ kotlin-stdlib                compile
 kotlinx-coroutines-core      runtime
 ```
 
-## Verify Artifact Signature
+## Verify Artifact Signing
 
 Example:
 
@@ -181,86 +178,128 @@ gpg --verify \
   ~/.m2/repository/io/github/john-dembaremba/offline-auth-android/<version>/offline-auth-android-<version>.aar
 ```
 
-Expected result:
+Expected:
 
 ```text
 Good signature from "John Dembaremba ..."
 ```
 
-## Maven Central Requirements
+## Create the Maven Central Bundle
 
-The publication must include:
+Create a temporary Maven-layout directory:
 
-- primary AAR
-- POM
-- sources JAR
-- Javadoc JAR
-- PGP signatures
-- license metadata
-- developer metadata
-- SCM information
-- valid Maven coordinates
+```bash
+VERSION=0.1.0
 
-The verified Central namespace must match the published `groupId`.
+rm -rf /tmp/offline-auth-central
 
-Current verified namespace:
-
-```text
-io.github.john-dembaremba
+mkdir -p \
+  /tmp/offline-auth-central/io/github/john-dembaremba/offline-auth-android/$VERSION
 ```
 
-## Central Portal User Token
+Copy the locally published artifacts:
 
-Generate a user token from the Maven Central Portal account page.
-
-Do not use the normal Central login password for automated publishing.
-
-Store Central credentials outside the repository, for example in:
-
-```text
-~/.gradle/gradle.properties
+```bash
+cp ~/.m2/repository/io/github/john-dembaremba/offline-auth-android/$VERSION/* \
+  /tmp/offline-auth-central/io/github/john-dembaremba/offline-auth-android/$VERSION/
 ```
 
-Never commit the generated username/token password.
+Generate MD5 and SHA1 checksums:
 
-## Central Portal Publishing
+```bash
+cd /tmp/offline-auth-central/io/github/john-dembaremba/offline-auth-android/$VERSION
 
-Maven Central currently uses the Central Publisher Portal.
+for file in \
+  offline-auth-android-$VERSION.aar \
+  offline-auth-android-$VERSION.pom \
+  offline-auth-android-$VERSION-sources.jar \
+  offline-auth-android-$VERSION-javadoc.jar \
+  offline-auth-android-$VERSION.module
+do
+    md5sum "$file" | awk '{print $1}' > "$file.md5"
+    sha1sum "$file" | awk '{print $1}' > "$file.sha1"
+done
+```
 
-For Gradle projects, there is currently no official Central Portal Gradle plugin. The project may therefore use the Portal Publisher API or another supported publishing integration.
+Create the upload ZIP:
 
-The current publishing workflow should be verified against the official Sonatype documentation before each release because the Portal publishing process may evolve.
+```bash
+cd /tmp/offline-auth-central
 
-## Recommended Release Flow
+zip -r \
+  ~/projects/offline-auth-android/offline-auth-android-$VERSION-central.zip \
+  io
+```
 
-1. Update the library version.
-2. Update changelog/release notes.
-3. Run formatting and linting.
-4. Run JVM tests.
-5. Run Android compatibility tests.
-6. Run the full Android release test suite.
-7. Build the release AAR.
-8. Build the consumer sample app.
-9. Publish to Maven Local.
-10. Inspect the generated POM.
-11. Verify signed artifacts.
-12. Confirm the public GPG key is discoverable.
-13. Upload the signed Maven bundle to Central Portal.
-14. Wait for Central validation.
-15. Review validation results.
-16. Publish the validated deployment.
-17. Verify the artifact appears on Maven Central.
-18. Create the Git tag and GitHub release.
+Verify its structure:
+
+```bash
+unzip -l \
+  ~/projects/offline-auth-android/offline-auth-android-$VERSION-central.zip
+```
+
+The archive must contain the Maven directory hierarchy:
+
+```text
+io/
+└── github/
+    └── john-dembaremba/
+        └── offline-auth-android/
+            └── <version>/
+```
+
+## Upload to Maven Central
+
+Open the Maven Central Portal and go to:
+
+```text
+Publishing Settings → Deployments → Publish Component
+```
+
+Use:
+
+```text
+Deployment Name:
+io.github.john-dembaremba:offline-auth-android:<version>
+```
+
+Example description:
+
+```text
+Offline Auth Android <version> release
+```
+
+Upload:
+
+```text
+offline-auth-android-<version>-central.zip
+```
+
+Central will process and validate the component.
+
+Review the deployment before final publication.
+
+## Published Releases
+
+The first Maven Central release was successfully published as:
+
+```text
+io.github.john-dembaremba:offline-auth-android:0.1.0
+```
+
+Status:
+
+```text
+PUBLISHED
+```
 
 ## Important Release Rule
 
 Maven Central releases are immutable.
 
-Once a version is successfully published, do not attempt to replace or modify that version.
+Once a version is published, it cannot be replaced or modified.
 
-If a release contains an error, publish a new version instead.
-
-For example:
+If a released version contains a problem, publish a new version:
 
 ```text
 0.1.0
@@ -268,19 +307,45 @@ For example:
 0.2.0
 ```
 
+Never reuse an already published version.
+
+## Recommended Release Flow
+
+1. Update the library version.
+2. Update release notes/changelog.
+3. Run formatting and linting.
+4. Run JVM tests.
+5. Run Android compatibility tests.
+6. Run the full Android release suite.
+7. Build the release AAR.
+8. Build the consumer sample app.
+9. Publish to Maven Local.
+10. Inspect the generated POM.
+11. Verify artifact signatures.
+12. Confirm the public GPG key is discoverable.
+13. Create the Maven Central bundle.
+14. Generate checksums.
+15. Inspect the ZIP layout.
+16. Upload through Central Portal.
+17. Review Central validation.
+18. Publish the deployment.
+19. Verify the artifact in Maven Central.
+20. Create the Git tag.
+21. Create the GitHub release.
+
 ## Consumer Installation
 
-After publication, consumers will use:
+Consumers can install the library with:
 
 ```kotlin
 dependencies {
     implementation(
-        "io.github.john-dembaremba:offline-auth-android:<version>",
+        "io.github.john-dembaremba:offline-auth-android:0.1.0",
     )
 }
 ```
 
-Consumers must also enable core library desugaring:
+Core library desugaring must also be enabled:
 
 ```kotlin
 android {
@@ -298,4 +363,4 @@ dependencies {
 
 ## References
 
-Before publishing a release, verify the current Maven Central requirements and Gradle publishing guidance in the official Sonatype Central documentation.
+Before future releases, verify the latest Maven Central publishing requirements because the Central Portal workflow may change.
