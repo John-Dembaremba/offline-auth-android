@@ -38,6 +38,12 @@ Run the complete Android release test suite, including all standard, performance
 make android-full-test
 ```
 
+## Publishing
+
+Release and Maven Central publishing instructions are documented in:
+
+[docs/PUBLISHING.md](docs/PUBLISHING.md)
+
 The library currently supports Android API 23 and newer.
 
 Android API 23–25 use a PBKDF2-HMAC-SHA256 compatibility implementation based on `HmacSHA256`, while Android API 26 and newer use the platform `PBKDF2WithHmacSHA256` implementation.
