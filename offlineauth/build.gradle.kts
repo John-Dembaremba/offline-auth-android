@@ -6,12 +6,13 @@ plugins {
 }
 
 group = "io.github.john-dembaremba"
-version = "0.1.0"
+version = "0.1.1"
 
 android {
     namespace = "io.github.johndembaremba.offlineauth"
 
-    compileSdk = 36
+    // Use SDK 35 to support applications compiling with SDK 35 or 36.
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 23

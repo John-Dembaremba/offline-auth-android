@@ -24,10 +24,58 @@ The device generates an RSA key pair in Android Keystore, sends only the public 
 
 ## Requirements
 
+### Android application
+
 - Android API 23+
+- Android compile SDK 35+
+- Core library desugaring enabled
+- A compatible Kotlin and Android Gradle Plugin toolchain
+
+### Library development
+
+The library is currently built using:
+
 - Java 21
-- Kotlin
-- Android Gradle Plugin 9+
+- Gradle 9.8.2
+- Android Gradle Plugin 9.4.0
+- Kotlin 2.2.10
+- Android compile SDK 35
+
+The library uses newer Kotlin dependencies. Applications using older Kotlin compilers should verify compatibility before integration.
+
+## Installation
+
+The library is distributed through Maven Central.
+
+Add the dependency:
+
+```kotlin
+dependencies {
+    implementation(
+        "io.github.john-dembaremba:offline-auth-android:0.1.1",
+    )
+}
+```
+
+Enable core library desugaring in the consuming Android application:
+
+```kotlin
+android {
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+    }
+}
+
+dependencies {
+    coreLibraryDesugaring(
+        "com.android.tools:desugar_jdk_libs:2.1.5",
+    )
+}
+```
+
+Version 0.1.1 requires Android compile SDK 35 or newer.
+
+The library is backend-agnostic. A companion React Native/Expo wrapper is available as `offline-auth-react-native`.
 
 ## Basic Usage
 

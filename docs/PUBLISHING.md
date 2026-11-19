@@ -7,13 +7,13 @@ This document describes how to prepare, validate, sign, and publish `offline-aut
 ```text
 groupId:    io.github.john-dembaremba
 artifactId: offline-auth-android
-version:    <release-version>
+version:    0.1.1
 ```
 
 Current published release:
 
 ```text
-io.github.john-dembaremba:offline-auth-android:0.1.0
+io.github.john-dembaremba:offline-auth-android:0.1.1
 ```
 
 The verified Maven Central namespace is:
@@ -189,7 +189,7 @@ Good signature from "John Dembaremba ..."
 Create a temporary Maven-layout directory:
 
 ```bash
-VERSION=0.1.0
+VERSION=0.1.1
 
 rm -rf /tmp/offline-auth-central
 
@@ -340,7 +340,7 @@ Consumers can install the library with:
 ```kotlin
 dependencies {
     implementation(
-        "io.github.john-dembaremba:offline-auth-android:0.1.0",
+        "io.github.john-dembaremba:offline-auth-android:0.1.1",
     )
 }
 ```
@@ -359,6 +359,21 @@ dependencies {
         "com.android.tools:desugar_jdk_libs:2.1.5",
     )
 }
+```
+
+### Release History
+
+| Version | Description |
+|---|---|
+| 0.1.0 | Initial Maven Central release |
+| 0.1.1 | Android compile SDK 35 compatibility |
+
+Version 0.1.1 is the release being prepared.
+
+The verified Maven Central namespace is:
+
+```text
+io.github.john-dembaremba
 ```
 
 ## References
